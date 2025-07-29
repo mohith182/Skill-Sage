@@ -1,0 +1,123 @@
+Build a full-stack web application named SkillSage – an AI-powered career mentor and learning navigator that provides personalized guidance, interview simulation, and progress tracking for students.
+
+🎯 Core Functionalities:
+User Roles: Student | Mentor | Admin
+
+AI Mentor Chatbot – powered by Gemini API
+
+Mock Interview Simulator with real-time Gemini feedback
+
+Smart Course Recommender based on user interests
+
+Skill Graph Dashboard to visualize progress
+
+Credit & Internship Tracker
+
+Firebase Authentication for login/signup
+
+Privacy-first design with secure data handling
+
+🧰 Tech Stack:
+💻 Frontend:
+React.js (dynamic UI)
+
+Tailwind CSS (modern styling)
+
+🧠 Backend + AI:
+Node.js + Express.js
+
+Firebase/Firestore (user data, credits, internships)
+
+Gemini API (chat + analysis)
+
+📦 Project Structure:
+markdown
+Copy
+Edit
+/client         => React frontend
+  /src
+    - components/
+    - pages/
+    - App.js
+
+/server         => Node/Express backend
+  - routes/
+  - services/geminiService.js
+  - app.js
+
+.env            => Store Gemini API key, Firebase config
+🔑 Environment Variables (.env):
+bash
+Copy
+Edit
+GEMINI_API_KEY=your_gemini_api_key
+REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your_auth_domain
+REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your_bucket
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+REACT_APP_FIREBASE_APP_ID=your_app_id
+🧠 Gemini API Integration:
+Install Google Generative AI SDK:
+
+bash
+Copy
+Edit
+npm install @google/generative-ai
+Example code to get Gemini working in geminiService.js:
+
+js
+Copy
+Edit
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+async function getCareerAdvice(prompt) {
+  const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+  return response.text();
+}
+
+module.exports = { getCareerAdvice };
+🌍 Deploying on Vercel (Frontend Only)
+✅ Step-by-step:
+Push your project to GitHub.
+
+On Vercel, import your project from GitHub.
+
+In Settings → Environment Variables, add all required keys.
+
+Set your project root to /client if frontend is in a subfolder.
+
+Click Deploy.
+
+🔄 Backend Hosting (Gemini requires server-side key handling):
+Since Vercel frontend cannot securely handle Gemini API key directly:
+
+Options:
+
+Host backend (Node.js) on:
+
+Render (recommended)
+
+Railway
+
+Google Cloud Run
+
+Ensure your frontend fetches responses via a secure API route like:
+
+bash
+Copy
+Edit
+/api/chat  →  sends prompt → Gemini API → returns response
+✅ Optional Add-ons:
+PWA support for offline access
+
+Voice input for regional accessibility
+
+Gamified dashboards with XP, badges, leaderboards
+
+Language toggle (English + regional)
+
