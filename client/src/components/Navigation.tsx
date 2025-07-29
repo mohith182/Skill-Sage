@@ -16,7 +16,7 @@ interface NavigationProps {
 
 export function Navigation({ user }: NavigationProps) {
   const [location] = useLocation();
-  
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -43,38 +43,19 @@ export function Navigation({ user }: NavigationProps) {
               <span className="text-xl font-bold text-neutral-800">SkillSage</span>
             </Link>
           </div>
-          
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/">
-              <a className={`transition-all duration-200 flex items-center space-x-1 px-3 py-2 rounded-lg ${
-                isActive("/") 
-                  ? "text-primary bg-primary/10 font-medium" 
-                  : "text-neutral-600 hover:text-primary hover:bg-neutral-50"
-              }`}>
-                <Home className="h-4 w-4" />
-                <span>Dashboard</span>
-              </a>
-            </Link>
-            <Link href="/courses">
-              <a className={`transition-all duration-200 flex items-center space-x-1 px-3 py-2 rounded-lg ${
-                isActive("/courses") 
-                  ? "text-primary bg-primary/10 font-medium" 
-                  : "text-neutral-600 hover:text-primary hover:bg-neutral-50"
-              }`}>
-                <BookOpen className="h-4 w-4" />
-                <span>Courses</span>
-              </a>
-            </Link>
-            <Link href="/interview">
-              <a className={`transition-all duration-200 flex items-center space-x-1 px-3 py-2 rounded-lg ${
-                isActive("/interview") 
-                  ? "text-primary bg-primary/10 font-medium" 
-                  : "text-neutral-600 hover:text-primary hover:bg-neutral-50"
-              }`}>
-                <Users className="h-4 w-4" />
-                <span>Interview</span>
-              </a>
-            </Link>
+
+          <nav className="flex items-center space-x-8">
+            {[
+              { name: "Dashboard", href: "/" },
+              { name: "Courses", href: "/courses" },
+              { name: "Interview", href: "/interview" },
+            ].map((item) => (
+              <Link key={item.name} href={item.href}>
+                <span className="text-neutral-600 hover:text-primary transition-colors duration-200 font-medium cursor-pointer">
+                  {item.name}
+                </span>
+              </Link>
+            ))}
           </nav>
 
           <div className="flex items-center space-x-4">
@@ -84,7 +65,7 @@ export function Navigation({ user }: NavigationProps) {
                 3
               </span>
             </Button>
-            
+
             {user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

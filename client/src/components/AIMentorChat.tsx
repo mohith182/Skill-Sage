@@ -260,9 +260,12 @@ export function AIMentorChat({ userId }: AIMentorChatProps) {
                   <Settings className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="sm:max-w-md" aria-describedby="settings-description">
                 <DialogHeader>
                   <DialogTitle>Chat Settings</DialogTitle>
+                  <p id="settings-description" className="text-sm text-muted-foreground">
+                    Customize your AI mentor chat experience with themes, sounds, and animations.
+                  </p>
                 </DialogHeader>
                 <div className="space-y-6">
                   <div className="space-y-4">
