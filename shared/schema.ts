@@ -4,7 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey(), // Firebase UID
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   photoURL: text("photo_url"),

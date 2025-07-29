@@ -33,12 +33,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("Creating new user:", req.body);
       const userData = insertUserSchema.parse(req.body);
-      const user = await storage.createUser(userData);
+      // Use Firebase UID as the database ID for consistency
+      const userWithId = { ...userData, id: req.body.firebaseUid };
+      const user = await storage.createUser(userWithId);
       console.log("User created successfully:", user.id);
       res.status(201).json(user);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating user:", error);
-      res.status(400).json({ message: "Invalid user data", error: error.message });
+      res.status(400).json({ message: "Invalid user data", error: error?.message || "Unknown error" });
     }
   });
 

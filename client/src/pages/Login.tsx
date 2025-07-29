@@ -39,6 +39,7 @@ export default function Login({ onUserChange }: LoginProps) {
           console.log("User doesn't exist, creating new user...");
           // User doesn't exist, create them
           await createUserMutation.mutateAsync({
+            firebaseUid: user.uid,
             email: user.email,
             name: user.displayName || "User",
             photoURL: user.photoURL,
