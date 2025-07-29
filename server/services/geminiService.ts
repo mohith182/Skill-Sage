@@ -148,3 +148,67 @@ export async function generateInterviewQuestion(interviewType: string): Promise<
     return "Tell me about yourself and why you're interested in this position.";
   }
 }
+
+export interface DocumentAnalysis {
+  summary: string;
+  recommendations: string[];
+  skillsIdentified: string[];
+  careerPath: string;
+}
+
+export async function analyzeDocument(filePath: string, fileName: string): Promise<DocumentAnalysis> {
+  try {
+    const fs = require('fs');
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    
+    const prompt = `Analyze this document and provide career mentoring insights:
+
+Document: ${fileName}
+Content: ${fileContent}
+
+Provide analysis in JSON format with:
+- summary (brief overview of the document)
+- recommendations (array of career advice based on content)
+- skillsIdentified (array of skills mentioned or demonstrated)
+- careerPath (suggested career direction)`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-pro",
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "object",
+          properties: {
+            summary: { type: "string" },
+            recommendations: { 
+              type: "array", 
+              items: { type: "string" } 
+            },
+            skillsIdentified: { 
+              type: "array", 
+              items: { type: "string" } 
+            },
+            careerPath: { type: "string" },
+          },
+          required: ["summary", "recommendations", "skillsIdentified", "careerPath"],
+        },
+      },
+      contents: prompt,
+    });
+
+    const rawJson = response.text;
+    if (rawJson) {
+      return JSON.parse(rawJson);
+    } else {
+      throw new Error("Empty response from model");
+    }
+  } catch (error) {
+    console.error("Document analysis error:", error);
+    return {
+      summary: "Unable to analyze document at this time.",
+      recommendations: ["Please try uploading the document again."],
+      skillsIdentified: [],
+      careerPath: "Unable to determine from document."
+    };
+  }
+}

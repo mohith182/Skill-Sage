@@ -19,7 +19,10 @@ import {
   VolumeX,
   Moon,
   Sun,
-  Palette
+  Palette,
+  Upload,
+  FileText,
+  MicOff
 } from "lucide-react";
 import { ChatMessage } from "@shared/schema";
 import {
@@ -60,7 +63,10 @@ export function AIMentorChat({ userId }: AIMentorChatProps) {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoScroll, setAutoScroll] = useState(true);
   const [animationsEnabled, setAnimationsEnabled] = useState(true);
+  const [isListening, setIsListening] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: messages = [], isLoading } = useQuery<ChatMessage[]>({
     queryKey: ["/api/chat", userId, currentSession],
@@ -130,6 +136,37 @@ export function AIMentorChat({ userId }: AIMentorChatProps) {
     },
   });
 
+  const uploadDocumentMutation = useMutation({
+    mutationFn: async (file: File) => {
+      setIsUploading(true);
+      const formData = new FormData();
+      formData.append('document', file);
+      formData.append('userId', userId);
+      
+      const response = await fetch('/api/upload-document', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/chat", userId, currentSession] });
+      setIsUploading(false);
+      if (soundEnabled) {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmEaBDeDzPTOgTkKJ2u87Nqc');
+        audio.play().catch(() => {});
+      }
+    },
+    onError: () => {
+      setIsUploading(false);
+    },
+  });
+
   const handleSendMessage = () => {
     if (!message.trim()) return;
     sendMessageMutation.mutate({ content: message });
@@ -139,6 +176,46 @@ export function AIMentorChat({ userId }: AIMentorChatProps) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      uploadDocumentMutation.mutate(file);
+    }
+  };
+
+  const toggleSpeechRecognition = () => {
+    if ('webkitSpeechRecognition' in window) {
+      const recognition = new (window as any).webkitSpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      if (isListening) {
+        recognition.stop();
+        setIsListening(false);
+      } else {
+        setIsListening(true);
+        recognition.start();
+
+        recognition.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          setMessage(transcript);
+          setIsListening(false);
+        };
+
+        recognition.onerror = () => {
+          setIsListening(false);
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+      }
+    } else {
+      alert('Speech recognition is not supported in your browser');
     }
   };
 
@@ -437,8 +514,25 @@ export function AIMentorChat({ userId }: AIMentorChatProps) {
         {/* Input */}
         <div className={`border-t p-6 ${chatTheme === "dark" ? "border-gray-700" : "border-neutral-100"}`}>
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="icon" className="hover:scale-105 transition-transform">
-              <Paperclip className="h-4 w-4" />
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept=".pdf,.doc,.docx,.txt"
+              className="hidden"
+            />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="hover:scale-105 transition-transform relative"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+              ) : (
+                <Paperclip className="h-4 w-4" />
+              )}
             </Button>
             <div className="flex-1 relative">
               <Input
@@ -454,9 +548,12 @@ export function AIMentorChat({ userId }: AIMentorChatProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 hover:scale-105 transition-transform"
+                className={`absolute right-2 top-1/2 transform -translate-y-1/2 hover:scale-105 transition-transform ${
+                  isListening ? "text-red-500 animate-pulse" : ""
+                }`}
+                onClick={toggleSpeechRecognition}
               >
-                <Mic className="h-4 w-4" />
+                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
               </Button>
             </div>
             <Button 
@@ -470,6 +567,19 @@ export function AIMentorChat({ userId }: AIMentorChatProps) {
                 <Send className="h-4 w-4" />
               )}
             </Button>
+          </div>
+          
+          {/* Upload status */}
+          {isUploading && (
+            <div className="mt-3 flex items-center space-x-2 text-sm text-blue-600">
+              <Upload className="h-4 w-4 animate-bounce" />
+              <span>Analyzing document...</span>
+            </div>
+          )}
+          
+          {/* File upload info */}
+          <div className="mt-2 text-xs text-muted-foreground">
+            💡 Upload PDF, DOC, DOCX, or TXT files for career analysis | Use microphone for speech-to-text
           </div>
         </div>
       </div>

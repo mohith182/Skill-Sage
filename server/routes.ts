@@ -1,11 +1,15 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import multer from "multer";
+import fs from "fs";
+import path from "path";
 import { storage } from "./storage";
 import { 
   getCareerAdvice, 
   analyzeInterviewResponse, 
   generateCourseRecommendations,
-  generateInterviewQuestion 
+  generateInterviewQuestion,
+  analyzeDocument 
 } from "./services/geminiService";
 import { 
   insertChatMessageSchema, 
@@ -13,6 +17,25 @@ import {
   insertInterviewSessionSchema,
   insertUserSchema 
 } from "@shared/schema";
+
+// Configure multer for file uploads
+const upload = multer({ 
+  dest: 'uploads/',
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF, DOC, DOCX, and TXT files are allowed.'));
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -83,6 +106,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(messages);
     } catch (error) {
       res.status(500).json({ message: "Failed to get chat messages" });
+    }
+  });
+
+  app.get("/api/chat/:userId/:sessionId", async (req, res) => {
+    try {
+      const messages = await storage.getChatMessages(req.params.userId, req.params.sessionId);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get chat messages" });
+    }
+  });
+
+  // Chat sessions management
+  app.get("/api/chat/sessions/:userId", async (req, res) => {
+    try {
+      // For now, return a default session structure
+      // This can be enhanced to store actual sessions in the database
+      const sessions = [
+        {
+          id: "default",
+          name: "Default Chat",
+          createdAt: new Date().toISOString(),
+          messageCount: 0
+        }
+      ];
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get chat sessions" });
+    }
+  });
+
+  app.post("/api/chat/sessions", async (req, res) => {
+    try {
+      const { userId, name } = req.body;
+      const session = {
+        id: `session_${Date.now()}`,
+        name: name || "New Chat",
+        createdAt: new Date().toISOString(),
+        messageCount: 0
+      };
+      res.json(session);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create chat session" });
+    }
+  });
+
+  app.delete("/api/chat/sessions/:sessionId", async (req, res) => {
+    try {
+      // For now, just return success
+      // This can be enhanced to actually delete sessions from database
+      res.json({ message: "Session deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete chat session" });
     }
   });
 
@@ -224,6 +300,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ recommendations });
     } catch (error) {
       res.status(500).json({ message: "Failed to generate recommendations" });
+    }
+  });
+
+  // File upload and document analysis
+  app.post("/api/upload-document", upload.single('document'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const { userId } = req.body;
+      const filePath = req.file.path;
+      const fileName = req.file.originalname;
+
+      // Analyze document with AI
+      const analysis = await analyzeDocument(filePath, fileName);
+
+      // Save analysis as a chat message
+      const aiMessage = await storage.createChatMessage({
+        userId,
+        content: `📄 **Document Analysis for "${fileName}"**\n\n${analysis.summary}\n\n**Career Recommendations:**\n${analysis.recommendations.map(rec => `• ${rec}`).join('\n')}`,
+        isAI: true,
+      });
+
+      // Clean up uploaded file
+      fs.unlinkSync(filePath);
+
+      res.json({ 
+        message: "Document analyzed successfully",
+        analysis,
+        chatMessage: aiMessage
+      });
+    } catch (error) {
+      console.error("Document upload error:", error);
+      res.status(500).json({ message: "Failed to analyze document" });
     }
   });
 
