@@ -56,11 +56,19 @@ export default function Login({ onUserChange }: LoginProps) {
       }
     }).catch((error) => {
       console.error("Login error:", error);
-      toast({
-        title: "Login Error",
-        description: "Failed to log in. Please try again.",
-        variant: "destructive",
-      });
+      if (error.code === 'auth/unauthorized-domain') {
+        toast({
+          title: "Domain Authorization Required",
+          description: "Please add your Replit domain to Firebase authorized domains.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login Error", 
+          description: "Failed to log in. Please try again.",
+          variant: "destructive",
+        });
+      }
     });
 
     return () => unsubscribe();
