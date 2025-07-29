@@ -26,6 +26,7 @@ export const courses = pgTable("courses", {
   rating: integer("rating").default(0),
   category: text("category").notNull(),
   isRecommended: boolean("is_recommended").default(false),
+  price: text("price"),
 });
 
 export const userCourses = pgTable("user_courses", {

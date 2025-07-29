@@ -21,9 +21,23 @@ interface CourseSearchResult {
     category: string;
     duration: string;
   };
+  courses?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    price: string;
+    difficulty: string;
+    category: string;
+    duration: string;
+    courseraUrl: string;
+    isPaid: boolean;
+    pricingInfo: string;
+  }>;
   courseraUrl: string;
   isPaid: boolean;
   pricingInfo: string;
+  count?: number;
+  searchTerm?: string;
 }
 
 export function CourseSearch({ userId }: CourseSearchProps) {
@@ -43,17 +57,31 @@ export function CourseSearch({ userId }: CourseSearchProps) {
 
     setIsSearching(true);
     try {
-      const response = await fetch(`/api/courses/search/${encodeURIComponent(searchQuery)}`);
-      const data = await response.json();
+      // First try to find multiple courses
+      const multiResponse = await fetch(`/api/courses/search-multiple/${encodeURIComponent(searchQuery)}`);
+      const multiData = await multiResponse.json();
       
-      if (response.ok) {
-        setSearchResult(data);
+      if (multiResponse.ok && multiData.courses && multiData.courses.length > 0) {
+        setSearchResult(multiData);
+        toast({
+          title: `Found ${multiData.count} course${multiData.count !== 1 ? 's' : ''}!`,
+          description: `Showing results for "${searchQuery}"`,
+        });
+        return;
+      }
+
+      // If no multiple results, try single course search
+      const singleResponse = await fetch(`/api/courses/search/${encodeURIComponent(searchQuery)}`);
+      const singleData = await singleResponse.json();
+      
+      if (singleResponse.ok) {
+        setSearchResult(singleData);
         toast({
           title: "Course found!",
-          description: data.course ? "Course details loaded" : "Redirecting to Coursera search",
+          description: singleData.course ? "Course details loaded" : "Redirecting to Coursera search",
         });
       } else {
-        setSearchResult(data);
+        setSearchResult(singleData);
         toast({
           title: "Course not found in our database",
           description: "But we'll help you find it on Coursera!",
@@ -108,7 +136,51 @@ export function CourseSearch({ userId }: CourseSearchProps) {
 
         {searchResult && (
           <div className="space-y-4">
-            {searchResult.course ? (
+            {searchResult.courses && searchResult.courses.length > 0 ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-neutral-800">
+                    Found {searchResult.count} course{searchResult.count !== 1 ? 's' : ''} for "{searchResult.searchTerm}"
+                  </h4>
+                </div>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {searchResult.courses.map((course, index) => (
+                    <Card key={course.id || index} className="border-primary/20">
+                      <CardContent className="pt-4">
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between">
+                            <h5 className="font-semibold text-base line-clamp-2">{course.title}</h5>
+                            <Badge variant={course.isPaid ? "destructive" : "secondary"}>
+                              {course.isPaid ? "Paid" : "Free"}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-neutral-600 line-clamp-2">{course.description}</p>
+                          <div className="flex flex-wrap gap-2">
+                            <Badge variant="outline" className="text-xs">{course.category}</Badge>
+                            <Badge variant="outline" className="text-xs">{course.difficulty}</Badge>
+                            <Badge variant="outline" className="text-xs">{course.duration}</Badge>
+                          </div>
+                          <div className="flex items-center justify-between pt-2">
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="h-3 w-3" />
+                              <span className="text-sm font-medium">{course.pricingInfo}</span>
+                            </div>
+                            <Button 
+                              size="sm"
+                              onClick={() => handleCourseraRedirect(course.courseraUrl)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              Coursera
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ) : searchResult.course ? (
               <Card className="border-primary/20">
                 <CardContent className="pt-4">
                   <div className="space-y-3">

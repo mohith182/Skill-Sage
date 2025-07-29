@@ -145,6 +145,37 @@ export class MemStorage implements IStorage {
     return Array.from(this.courses.values()).filter(course => course.isRecommended);
   }
 
+  async searchCourseByName(courseName: string): Promise<Course | undefined> {
+    const courses = Array.from(this.courses.values());
+    
+    // First try exact match or close match in title
+    let result = courses.find(course => 
+      course.title.toLowerCase().includes(courseName.toLowerCase())
+    );
+    
+    if (result) {
+      return result;
+    }
+    
+    // If no match in title, try searching in description and category
+    result = courses.find(course => 
+      course.description.toLowerCase().includes(courseName.toLowerCase()) ||
+      course.category.toLowerCase().includes(courseName.toLowerCase())
+    );
+    
+    return result;
+  }
+
+  async searchCourses(searchTerm: string): Promise<Course[]> {
+    const courses = Array.from(this.courses.values());
+    
+    return courses.filter(course => 
+      course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.category.toLowerCase().includes(searchTerm.toLowerCase())
+    ).slice(0, 10);
+  }
+
   async getCourse(id: string): Promise<Course | undefined> {
     return this.courses.get(id);
   }
@@ -415,19 +446,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchCourseByName(courseName: string): Promise<Course | undefined> {
-    const result = await db.select().from(courses)
+    // First try exact match or close match in title
+    let result = await db.select().from(courses)
       .where(sql`LOWER(${courses.title}) LIKE LOWER(${'%' + courseName + '%'})`)
       .limit(1);
+    
+    if (result.length > 0) {
+      return result[0];
+    }
+    
+    // If no match in title, try searching in description and category
+    result = await db.select().from(courses)
+      .where(sql`LOWER(${courses.description}) LIKE LOWER(${'%' + courseName + '%'}) OR LOWER(${courses.category}) LIKE LOWER(${'%' + courseName + '%'})`)
+      .limit(1);
+    
     return result[0];
+  }
+
+  async searchCourses(searchTerm: string): Promise<Course[]> {
+    // Search in title, description, and category
+    const result = await db.select().from(courses)
+      .where(sql`
+        LOWER(${courses.title}) LIKE LOWER(${'%' + searchTerm + '%'}) OR 
+        LOWER(${courses.description}) LIKE LOWER(${'%' + searchTerm + '%'}) OR 
+        LOWER(${courses.category}) LIKE LOWER(${'%' + searchTerm + '%'})
+      `)
+      .limit(10);
+    
+    return result;
   }
 }
 
-// Create sample data function with real course data
+// Create comprehensive course database with real course data
 async function initializeSampleData() {
   const existingCourses = await db.select().from(courses);
 
   if (existingCourses.length === 0) {
-    await db.insert(courses).values([
+    const comprehensiveCourses = [
+      // Programming & Development
       {
         title: "Complete Python Bootcamp: Go from Zero to Hero",
         description: "Learn Python like a Professional Start from the basics and go all the way to creating your own applications and games",
@@ -437,6 +493,7 @@ async function initializeSampleData() {
         rating: 46,
         category: "Programming",
         isRecommended: true,
+        price: "$89.99"
       },
       {
         title: "The Complete JavaScript Course 2024",
@@ -447,7 +504,32 @@ async function initializeSampleData() {
         rating: 47,
         category: "Web Development",
         isRecommended: true,
+        price: "$94.99"
       },
+      {
+        title: "Java Programming Masterclass",
+        description: "Learn Java In This Course And Become a Computer Programmer. Obtain valuable Core Java Skills And Java Certification",
+        imageUrl: "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=250&fit=crop",
+        difficulty: "Beginner",
+        duration: "80 hours",
+        rating: 45,
+        category: "Programming",
+        isRecommended: false,
+        price: "$99.99"
+      },
+      {
+        title: "C++ Programming Course - Beginner to Advanced",
+        description: "Learn C++ programming from basics to advanced topics including OOP, STL, and modern C++",
+        imageUrl: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=400&h=250&fit=crop",
+        difficulty: "Intermediate",
+        duration: "45 hours",
+        rating: 44,
+        category: "Programming",
+        isRecommended: false,
+        price: "$79.99"
+      },
+      
+      // Data Science & Analytics
       {
         title: "Machine Learning A-Z: AI, Python & R",
         description: "Learn to create Machine Learning Algorithms in Python and R from two Data Science experts",
@@ -457,7 +539,43 @@ async function initializeSampleData() {
         rating: 45,
         category: "Data Science",
         isRecommended: true,
+        price: "$129.99"
       },
+      {
+        title: "Data Science and Machine Learning Bootcamp with R",
+        description: "Learn how to use the R programming language for data science and machine learning and data visualization!",
+        imageUrl: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=250&fit=crop",
+        difficulty: "Intermediate",
+        duration: "17 hours",
+        rating: 43,
+        category: "Data Science",
+        isRecommended: false,
+        price: "$109.99"
+      },
+      {
+        title: "Python for Data Analysis and Visualization",
+        description: "Learn to use Python for data analysis with pandas, matplotlib, seaborn, plotly, and more!",
+        imageUrl: "https://images.unsplash.com/photo-1518186285589-2f7649de83e0?w=400&h=250&fit=crop",
+        difficulty: "Intermediate",
+        duration: "25 hours",
+        rating: 46,
+        category: "Data Science",
+        isRecommended: true,
+        price: "$94.99"
+      },
+      {
+        title: "Deep Learning Specialization",
+        description: "Master Deep Learning and Break into AI. Learn neural networks, CNN, RNN, LSTM, transformers and more",
+        imageUrl: "https://images.unsplash.com/photo-1507146426996-ef05306b995a?w=400&h=250&fit=crop",
+        difficulty: "Advanced",
+        duration: "60 hours",
+        rating: 48,
+        category: "AI/ML",
+        isRecommended: true,
+        price: "$199.99"
+      },
+      
+      // Web Development
       {
         title: "React - The Complete Guide 2024",
         description: "Dive in and learn React.js from scratch! Learn Reactjs, Hooks, Redux, React Routing, Animations, Next.js and way more!",
@@ -467,16 +585,7 @@ async function initializeSampleData() {
         rating: 46,
         category: "Web Development",
         isRecommended: false,
-      },
-      {
-        title: "AWS Certified Solutions Architect",
-        description: "Pass the AWS Certified Solutions Architect Associate Exam! Complete Amazon Web Services cloud training",
-        imageUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=250&fit=crop",
-        difficulty: "Advanced",
-        duration: "26 hours",
-        rating: 46,
-        category: "Cloud Computing",
-        isRecommended: false,
+        price: "$99.99"
       },
       {
         title: "The Complete Node.js Developer Course",
@@ -487,8 +596,289 @@ async function initializeSampleData() {
         rating: 47,
         category: "Backend Development",
         isRecommended: true,
+        price: "$94.99"
       },
-    ]);
+      {
+        title: "Angular - The Complete Guide (2024 Edition)",
+        description: "Master Angular and build awesome, reactive web apps with the successor of Angular.js",
+        imageUrl: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=250&fit=crop",
+        difficulty: "Intermediate",
+        duration: "42 hours",
+        rating: 45,
+        category: "Web Development",
+        isRecommended: false,
+        price: "$99.99"
+      },
+      {
+        title: "Vue.js 3 - The Complete Guide",
+        description: "Vue.js is an awesome JavaScript Framework for building Frontend Applications! VueJS mixes the Best of Angular + React!",
+        imageUrl: "https://images.unsplash.com/photo-1661956602116-aa6865609028?w=400&h=250&fit=crop",
+        difficulty: "Intermediate",
+        duration: "32 hours",
+        rating: 46,
+        category: "Web Development",
+        isRecommended: false,
+        price: "$89.99"
+      },
+      
+      // Cloud Computing & DevOps
+      {
+        title: "AWS Certified Solutions Architect",
+        description: "Pass the AWS Certified Solutions Architect Associate Exam! Complete Amazon Web Services cloud training",
+        imageUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=250&fit=crop",
+        difficulty: "Advanced",
+        duration: "26 hours",
+        rating: 46,
+        category: "Cloud Computing",
+        isRecommended: false,
+        price: "$79.99"
+      },
+      {
+        title: "Docker and Kubernetes: The Complete Guide",
+        description: "Build, test, and deploy Docker applications with Kubernetes while learning production-style development workflows",
+        imageUrl: "https://images.unsplash.com/photo-1605745341112-85968b19335b?w=400&h=250&fit=crop",
+        difficulty: "Advanced",
+        duration: "22 hours",
+        rating: 45,
+        category: "DevOps",
+        isRecommended: false,
+        price: "$109.99"
+      },
+      {
+        title: "Microsoft Azure Fundamentals",
+        description: "Learn Azure basics! Pass the AZ-900 exam. Understand cloud concepts, core Azure services, security, and pricing",
+        imageUrl: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=400&h=250&fit=crop",
+        difficulty: "Beginner",
+        duration: "18 hours",
+        rating: 44,
+        category: "Cloud Computing",
+        isRecommended: false,
+        price: "$69.99"
+      },
+      
+      // Mobile Development
+      {
+        title: "iOS & Swift - The Complete iOS App Development",
+        description: "Learn iOS App Development from Beginning to End. Start with Swift fundamentals and work up to complex apps",
+        imageUrl: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&h=250&fit=crop",
+        difficulty: "Beginner",
+        duration: "62 hours",
+        rating: 46,
+        category: "Mobile Development",
+        isRecommended: false,
+        price: "$99.99"
+      },
+      {
+        title: "React Native - The Practical Guide",
+        description: "Use React Native and your React knowledge to build native iOS and Android Apps - incl. Push Notifications, Hooks, Redux",
+        imageUrl: "https://images.unsplash.com/photo-1556761175-4b46a572b786?w=400&h=250&fit=crop",
+        difficulty: "Intermediate",
+        duration: "33 hours",
+        rating: 45,
+        category: "Mobile Development",
+        isRecommended: false,
+        price: "$94.99"
+      },
+      {
+        title: "Flutter & Dart - The Complete Guide",
+        description: "A Complete Guide to the Flutter SDK & Flutter Framework for building native iOS and Android apps",
+        imageUrl: "https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400&h=250&fit=crop",
+        difficulty: "Intermediate",
+        duration: "41 hours",
+        rating: 46,
+        category: "Mobile Development",
+        isRecommended: true,
+        price: "$99.99"
+      },
+      
+      // Design & Creative
+      {
+        title: "Complete Blender Creator Course",
+        description: "Learn 3D Modelling for beginners. Covers all 3D art pipeline stages from modelling to final renders",
+        imageUrl: "https://images.unsplash.com/photo-1618477388954-7852f32655ec?w=400&h=250&fit=crop",
+        difficulty: "Beginner",
+        duration: "30 hours",
+        rating: 47,
+        category: "Design",
+        isRecommended: false,
+        price: "$79.99"
+      },
+      {
+        title: "Photoshop for Web Design Beginners",
+        description: "Learn Adobe Photoshop from scratch for web design, UI design and photo editing",
+        imageUrl: "https://images.unsplash.com/photo-1609921212029-bb5a28e60960?w=400&h=250&fit=crop",
+        difficulty: "Beginner",
+        duration: "15 hours",
+        rating: 44,
+        category: "Design",
+        isRecommended: false,
+        price: "$69.99"
+      },
+      {
+        title: "UI/UX Design Bootcamp",
+        description: "Learn User Interface Design and User Experience Design from scratch. Adobe XD, Figma, mobile and web design",
+        imageUrl: "https://images.unsplash.com/photo-1541462608143-67571c6738dd?w=400&h=250&fit=crop",
+        difficulty: "Beginner",
+        duration: "25 hours",
+        rating: 45,
+        category: "Design",
+        isRecommended: true,
+        price: "$89.99"
+      },
+      
+      // Business & Marketing
+      {
+        title: "Complete Digital Marketing Course",
+        description: "Master digital marketing strategy, social media marketing, SEO, YouTube, email, Facebook marketing, analytics & more!",
+        imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=250&fit=crop",
+        difficulty: "Beginner",
+        duration: "23 hours",
+        rating: 44,
+        category: "Marketing",
+        isRecommended: false,
+        price: "$89.99"
+      },
+      {
+        title: "SEO Training Course by Moz",
+        description: "The Beginner's Guide to SEO has been read over 10 million times. Learn SEO from industry experts",
+        imageUrl: "https://images.unsplash.com/photo-1432888622747-4eb9a8efeb07?w=400&h=250&fit=crop",
+        difficulty: "Beginner",
+        duration: "12 hours",
+        rating: 43,
+        category: "Marketing",
+        isRecommended: false,
+        price: "$59.99"
+      },
+      {
+        title: "Google Ads (AdWords) Certification Course",
+        description: "Become Google Ads Certified! Learn to create, manage and optimize Google Ads campaigns like a pro",
+        imageUrl: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=400&h=250&fit=crop",
+        difficulty: "Intermediate",
+        duration: "18 hours",
+        rating: 44,
+        category: "Marketing",
+        isRecommended: false,
+        price: "$79.99"
+      },
+      
+      // Languages
+      {
+        title: "Spanish for Beginners: Learn 500 Most Common Words",
+        description: "Learn Spanish vocabulary, pronunciation and grammar. Speak Spanish with confidence!",
+        imageUrl: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=250&fit=crop",
+        difficulty: "Beginner",
+        duration: "8 hours",
+        rating: 42,
+        category: "Languages",
+        isRecommended: false,
+        price: "$49.99"
+      },
+      {
+        title: "French Complete Course: Learn French for Beginners",
+        description: "Complete French course: Learn to speak French like a native! Grammar, vocabulary, pronunciation & conversation",
+        imageUrl: "https://images.unsplash.com/photo-1471970471555-19d4b113e9ed?w=400&h=250&fit=crop",
+        difficulty: "Beginner",
+        duration: "12 hours",
+        rating: 43,
+        category: "Languages",
+        isRecommended: false,
+        price: "$59.99"
+      },
+      {
+        title: "Mandarin Chinese Complete Course",
+        description: "Learn Mandarin Chinese from scratch. Pronunciation, characters, grammar, and conversation practice",
+        imageUrl: "https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=400&h=250&fit=crop",
+        difficulty: "Beginner",
+        duration: "20 hours",
+        rating: 44,
+        category: "Languages",
+        isRecommended: false,
+        price: "$69.99"
+      },
+      
+      // PEARL and Perl related courses
+      {
+        title: "Perl Programming for Beginners",
+        description: "Learn Perl programming language from scratch. Master regular expressions, file handling, and scripting",
+        imageUrl: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=400&h=250&fit=crop",
+        difficulty: "Beginner",
+        duration: "15 hours",
+        rating: 41,
+        category: "Programming",
+        isRecommended: false,
+        price: "$59.99"
+      },
+      {
+        title: "Advanced Perl Programming",
+        description: "Master advanced Perl concepts including OOP, modules, references, and complex data structures",
+        imageUrl: "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=250&fit=crop",
+        difficulty: "Advanced",
+        duration: "25 hours",
+        rating: 42,
+        category: "Programming",
+        isRecommended: false,
+        price: "$79.99"
+      },
+      {
+        title: "Perl for System Administration",
+        description: "Use Perl for system administration, automation, and scripting in Unix/Linux environments",
+        imageUrl: "https://images.unsplash.com/photo-1629654297299-c8506221ca97?w=400&h=250&fit=crop",
+        difficulty: "Intermediate",
+        duration: "18 hours",
+        rating: 40,
+        category: "System Administration",
+        isRecommended: false,
+        price: "$69.99"
+      },
+      
+      // More diverse courses
+      {
+        title: "Ruby on Rails Web Development",
+        description: "Learn Ruby on Rails from scratch and build web applications with MVC architecture",
+        imageUrl: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=250&fit=crop",
+        difficulty: "Intermediate",
+        duration: "30 hours",
+        rating: 44,
+        category: "Web Development",
+        isRecommended: false,
+        price: "$89.99"
+      },
+      {
+        title: "PHP for Beginners - Complete PHP Course",
+        description: "Learn PHP from scratch and build dynamic websites. Includes MySQL database integration",
+        imageUrl: "https://images.unsplash.com/photo-1599507593499-a3f7d7d97667?w=400&h=250&fit=crop",
+        difficulty: "Beginner",
+        duration: "28 hours",
+        rating: 43,
+        category: "Web Development",
+        isRecommended: false,
+        price: "$79.99"
+      },
+      {
+        title: "Complete Ethical Hacking Bootcamp",
+        description: "Learn ethical hacking from scratch! Bug bounty hunting, penetration testing, web app security & more",
+        imageUrl: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&h=250&fit=crop",
+        difficulty: "Advanced",
+        duration: "15 hours",
+        rating: 45,
+        category: "Cybersecurity",
+        isRecommended: false,
+        price: "$199.99"
+      },
+      {
+        title: "Blockchain and Cryptocurrency Complete Course",
+        description: "Learn blockchain technology, cryptocurrency, Bitcoin, Ethereum, and smart contracts development",
+        imageUrl: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=400&h=250&fit=crop",
+        difficulty: "Intermediate",
+        duration: "35 hours",
+        rating: 44,
+        category: "Blockchain",
+        isRecommended: false,
+        price: "$149.99"
+      }
+    ];
+
+    await db.insert(courses).values(comprehensiveCourses);
   }
 }
 

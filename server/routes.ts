@@ -107,8 +107,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!course) {
         return res.status(404).json({ 
-          message: "Course not found",
-          courseraUrl: `https://www.coursera.org/search?query=${encodeURIComponent(courseName)}`
+          message: "Course not found in our database",
+          courseraUrl: `https://www.coursera.org/search?query=${encodeURIComponent(courseName)}`,
+          isPaid: true,
+          pricingInfo: "Pricing information available on Coursera"
         });
       }
 
@@ -123,6 +125,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to search course" });
+    }
+  });
+
+  // Search for multiple courses
+  app.get("/api/courses/search-multiple/:searchTerm", async (req, res) => {
+    try {
+      const searchTerm = decodeURIComponent(req.params.searchTerm);
+      const courses = await storage.searchCourses(searchTerm);
+      
+      const coursesWithUrls = courses.map(course => ({
+        ...course,
+        courseraUrl: `https://www.coursera.org/search?query=${encodeURIComponent(course.title)}`,
+        isPaid: course.price && course.price !== "Free" && course.price !== "$0.00",
+        pricingInfo: course.price && course.price !== "Free" && course.price !== "$0.00" 
+          ? `This course costs ${course.price}` 
+          : "This course is free"
+      }));
+
+      res.json({
+        courses: coursesWithUrls,
+        count: courses.length,
+        searchTerm
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to search courses" });
     }
   });
 
