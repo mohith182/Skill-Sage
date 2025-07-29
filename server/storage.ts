@@ -20,7 +20,7 @@ import {
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -409,12 +409,23 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return session;
   }
+
+  async getRecommendedCourses(userId: string): Promise<Course[]> {
+    return await db.select().from(courses).where(eq(courses.isRecommended, true)).limit(6);
+  }
+
+  async searchCourseByName(courseName: string): Promise<Course | undefined> {
+    const result = await db.select().from(courses)
+      .where(sql`LOWER(${courses.title}) LIKE LOWER(${'%' + courseName + '%'})`)
+      .limit(1);
+    return result[0];
+  }
 }
 
 // Create sample data function with real course data
 async function initializeSampleData() {
   const existingCourses = await db.select().from(courses);
-  
+
   if (existingCourses.length === 0) {
     await db.insert(courses).values([
       {

@@ -13,6 +13,15 @@ export function CourseRecommendations({ userId }: CourseRecommendationsProps) {
     queryKey: ["/api/courses/recommended", userId],
   });
 
+  const handleCourseEnroll = (courseTitle: string) => {
+    const message = `You'll be redirected to Coursera to find "${courseTitle}". Note that some courses may require payment.`;
+    
+    if (confirm(message)) {
+      const searchQuery = encodeURIComponent(courseTitle);
+      window.open(`https://www.coursera.org/search?query=${searchQuery}`, '_blank');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-6">
@@ -91,8 +100,9 @@ export function CourseRecommendations({ userId }: CourseRecommendationsProps) {
               <Button 
                 size="sm" 
                 className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 transform hover:scale-105"
+                onClick={() => handleCourseEnroll(course.title)}
               >
-                Enroll Now
+                Find on Coursera
               </Button>
             </div>
           </div>

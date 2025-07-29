@@ -99,6 +99,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Search for course by name
+  app.get("/api/courses/search/:courseName", async (req, res) => {
+    try {
+      const courseName = decodeURIComponent(req.params.courseName);
+      const course = await storage.searchCourseByName(courseName);
+      
+      if (!course) {
+        return res.status(404).json({ 
+          message: "Course not found",
+          courseraUrl: `https://www.coursera.org/search?query=${encodeURIComponent(courseName)}`
+        });
+      }
+
+      const courseraUrl = `https://www.coursera.org/search?query=${encodeURIComponent(course.title)}`;
+      const isPaid = course.price && course.price !== "Free" && course.price !== "$0.00";
+      
+      res.json({
+        course,
+        courseraUrl,
+        isPaid,
+        pricingInfo: isPaid ? `This course costs ${course.price}` : "This course is free"
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to search course" });
+    }
+  });
+
   // Chat routes
   app.get("/api/chat/:userId", async (req, res) => {
     try {

@@ -190,6 +190,18 @@ export default function Courses({ user }: CoursesProps) {
     }
   };
 
+  const handleCourseEnroll = (courseTitle: string, price: string) => {
+    const isPaid = price !== "Free" && price !== "$0.00";
+    const message = isPaid 
+      ? `This course "${courseTitle}" costs ${price}. You'll be redirected to Coursera to enroll.`
+      : `This course "${courseTitle}" is free! You'll be redirected to Coursera to enroll.`;
+    
+    if (confirm(message)) {
+      const searchQuery = encodeURIComponent(courseTitle);
+      window.open(`https://www.coursera.org/search?query=${searchQuery}`, '_blank');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-blue-50">
       <Navigation user={user} />
@@ -305,8 +317,11 @@ export default function Courses({ user }: CoursesProps) {
                 
                 <div className="flex items-center justify-between pt-2">
                   <span className="text-2xl font-bold text-primary">{course.price}</span>
-                  <Button className="bg-primary hover:bg-primary/90">
-                    Enroll Now
+                  <Button 
+                    className="bg-primary hover:bg-primary/90"
+                    onClick={() => handleCourseEnroll(course.title, course.price)}
+                  >
+                    Find on Coursera
                   </Button>
                 </div>
               </CardContent>

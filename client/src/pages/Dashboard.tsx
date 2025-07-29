@@ -15,6 +15,17 @@ interface DashboardProps {
   user: FirebaseUser;
 }
 
+// Mock implementation for CourseSearch
+const CourseSearch = () => {
+    return (
+        <div>
+            <h2>Course Search</h2>
+            <p>This is a placeholder for the CourseSearch component.</p>
+            {/* Add actual search functionality here */}
+        </div>
+    );
+};
+
 export default function Dashboard({ user }: DashboardProps) {
   const userId = user.uid;
   const userName = user.displayName || "User";
@@ -22,9 +33,9 @@ export default function Dashboard({ user }: DashboardProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-blue-50">
       <Navigation user={user} />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
+
         {/* Hero Welcome Section */}
         <div className="bg-gradient-to-r from-primary to-secondary rounded-2xl p-8 mb-8 text-white relative overflow-hidden">
           <div className="relative z-10">
@@ -48,7 +59,7 @@ export default function Dashboard({ user }: DashboardProps) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
+
           {/* Main Content Area */}
           <div className="lg:col-span-2 space-y-8">
             <AIMentorChat userId={userId} />
