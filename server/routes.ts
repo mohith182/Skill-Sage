@@ -31,11 +31,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/users", async (req, res) => {
     try {
+      console.log("Creating new user:", req.body);
       const userData = insertUserSchema.parse(req.body);
       const user = await storage.createUser(userData);
+      console.log("User created successfully:", user.id);
       res.status(201).json(user);
     } catch (error) {
-      res.status(400).json({ message: "Invalid user data" });
+      console.error("Error creating user:", error);
+      res.status(400).json({ message: "Invalid user data", error: error.message });
     }
   });
 

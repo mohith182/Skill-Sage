@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithRedirect, GoogleAuthProvider, getRedirectResult, signOut } from "firebase/auth";
+import { getAuth, signInWithPopup, signInWithRedirect, GoogleAuthProvider, getRedirectResult, signOut } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -22,9 +22,24 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 const provider = new GoogleAuthProvider();
+provider.addScope('email');
+provider.addScope('profile');
 
-export function login() {
-  signInWithRedirect(auth, provider);
+// Try popup first, fallback to redirect if needed
+export async function login() {
+  try {
+    console.log("Attempting popup login...");
+    const result = await signInWithPopup(auth, provider);
+    console.log("Popup login successful:", result.user.uid);
+    return result;
+  } catch (error: any) {
+    console.log("Popup failed, trying redirect:", error.code);
+    if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+      console.log("Using redirect method instead...");
+      return signInWithRedirect(auth, provider);
+    }
+    throw error;
+  }
 }
 
 export function logout() {

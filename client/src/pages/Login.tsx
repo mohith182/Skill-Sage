@@ -26,13 +26,17 @@ export default function Login({ onUserChange }: LoginProps) {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      console.log("Auth state changed:", user?.uid ? "User logged in" : "No user");
       if (user) {
         onUserChange(user);
         
         // Check if user exists in our database, create if not
         try {
+          console.log("Checking if user exists in database...");
           await apiRequest("GET", `/api/user/${user.uid}`);
+          console.log("User exists in database");
         } catch (error) {
+          console.log("User doesn't exist, creating new user...");
           // User doesn't exist, create them
           await createUserMutation.mutateAsync({
             email: user.email,
@@ -40,15 +44,19 @@ export default function Login({ onUserChange }: LoginProps) {
             photoURL: user.photoURL,
             role: "student",
           });
+          console.log("New user created");
         }
         
+        console.log("Redirecting to dashboard...");
         setLocation("/");
       }
     });
 
     // Handle redirect result
     handleRedirect().then((result) => {
+      console.log("Redirect result:", result?.user?.uid ? "User found" : "No user");
       if (result?.user) {
+        console.log("Login successful via redirect");
         toast({
           title: "Welcome to SkillSage!",
           description: "You've successfully logged in.",
@@ -65,7 +73,7 @@ export default function Login({ onUserChange }: LoginProps) {
       } else {
         toast({
           title: "Login Error", 
-          description: "Failed to log in. Please try again.",
+          description: `Failed to log in: ${error.message}`,
           variant: "destructive",
         });
       }
