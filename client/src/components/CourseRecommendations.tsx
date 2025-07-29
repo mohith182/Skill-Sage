@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
 import { Course } from "@shared/schema";
+import { Link } from "wouter";
 
 interface CourseRecommendationsProps {
   userId: string;
@@ -35,9 +36,11 @@ export function CourseRecommendations({ userId }: CourseRecommendationsProps) {
     <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-semibold text-neutral-800">Recommended Courses</h3>
-        <Button variant="ghost" className="text-primary hover:text-blue-600 text-sm font-medium">
-          View All
-        </Button>
+        <Link href="/courses">
+          <Button variant="ghost" className="text-primary hover:text-blue-600 text-sm font-medium">
+            View All
+          </Button>
+        </Link>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

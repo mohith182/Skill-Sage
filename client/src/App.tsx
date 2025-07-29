@@ -8,6 +8,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { auth } from "@/lib/firebase";
 import Dashboard from "@/pages/Dashboard";
 import Login from "@/pages/Login";
+import Courses from "@/pages/Courses";
+import Interview from "@/pages/Interview";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -40,6 +42,12 @@ function Router() {
     <Switch>
       <Route path="/">
         {user ? <Dashboard user={user} /> : <Login onUserChange={setUser} />}
+      </Route>
+      <Route path="/courses">
+        {user ? <Courses /> : <Login onUserChange={setUser} />}
+      </Route>
+      <Route path="/interview">
+        {user ? <Interview userId={user.uid} /> : <Login onUserChange={setUser} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

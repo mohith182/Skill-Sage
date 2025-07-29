@@ -163,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Interview routes
-  app.get("/api/interviews/:userId", async (req, res) => {
+  app.get("/api/interview/sessions/:userId", async (req, res) => {
     try {
       const sessions = await storage.getInterviewSessions(req.params.userId);
       res.json(sessions);
@@ -182,23 +182,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/interview/analyze", async (req, res) => {
+  app.post("/api/interview/response", async (req, res) => {
     try {
-      const { question, response, type, userId } = req.body;
+      const { userId, question, response, type } = req.body;
+      
+      // Get AI feedback
       const feedback = await analyzeInterviewResponse(question, response, type);
       
       // Save interview session
       const session = await storage.createInterviewSession({
         userId,
         type,
+        question,
+        userResponse: response,
         feedback: feedback.feedback,
         score: feedback.score,
       });
 
-      res.json({ feedback, session });
+      // Create activity
+      await storage.createActivity({
+        userId,
+        type: "interview_session",
+        description: `Completed ${type} interview with score ${feedback.score}`,
+      });
+
+      res.json({
+        session,
+        ...feedback
+      });
     } catch (error) {
-      console.error("Interview analysis error:", error);
-      res.status(500).json({ message: "Failed to analyze interview response" });
+      console.error("Interview response error:", error);
+      res.status(500).json({ message: "Failed to process interview response" });
     }
   });
 

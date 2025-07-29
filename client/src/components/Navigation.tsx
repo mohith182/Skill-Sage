@@ -1,6 +1,7 @@
 import { User as FirebaseUser } from "firebase/auth";
 import { logout } from "@/lib/firebase";
-import { Bell, ChevronDown } from "lucide-react";
+import { Bell, ChevronDown, Home, BookOpen, Users } from "lucide-react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -36,10 +37,18 @@ export function Navigation({ user }: NavigationProps) {
           </div>
           
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#" className="text-neutral-600 hover:text-primary transition-colors">Dashboard</a>
-            <a href="#" className="text-neutral-600 hover:text-primary transition-colors">AI Mentor</a>
-            <a href="#" className="text-neutral-600 hover:text-primary transition-colors">Courses</a>
-            <a href="#" className="text-neutral-600 hover:text-primary transition-colors">Interview</a>
+            <Link href="/" className="text-neutral-600 hover:text-primary transition-colors flex items-center space-x-1">
+              <Home className="h-4 w-4" />
+              <span>Dashboard</span>
+            </Link>
+            <Link href="/courses" className="text-neutral-600 hover:text-primary transition-colors flex items-center space-x-1">
+              <BookOpen className="h-4 w-4" />
+              <span>Courses</span>
+            </Link>
+            <Link href="/interview" className="text-neutral-600 hover:text-primary transition-colors flex items-center space-x-1">
+              <Users className="h-4 w-4" />
+              <span>Interview</span>
+            </Link>
           </nav>
 
           <div className="flex items-center space-x-4">

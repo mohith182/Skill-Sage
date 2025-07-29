@@ -405,31 +405,71 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Create sample data function for database
+// Create sample data function with real course data
 async function initializeSampleData() {
   const existingCourses = await db.select().from(courses);
   
   if (existingCourses.length === 0) {
     await db.insert(courses).values([
       {
-        title: "Deep Learning Fundamentals",
-        description: "Master neural networks and deep learning with hands-on projects.",
-        imageUrl: "https://images.unsplash.com/photo-1555949963-aa79dcee981c?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200",
+        title: "Complete Python Bootcamp: Go from Zero to Hero",
+        description: "Learn Python like a Professional Start from the basics and go all the way to creating your own applications and games",
+        imageUrl: "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400&h=250&fit=crop",
         difficulty: "Beginner",
-        duration: "12 weeks",
-        rating: 48,
-        category: "AI/ML",
+        duration: "22 hours",
+        rating: 46,
+        category: "Programming",
         isRecommended: true,
       },
       {
-        title: "Advanced Python for Data Science",
-        description: "Learn advanced Python techniques for data analysis and visualization.",
-        imageUrl: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200",
+        title: "The Complete JavaScript Course 2024",
+        description: "The modern JavaScript course for everyone! Master JavaScript with projects, challenges and theory",
+        imageUrl: "https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=400&h=250&fit=crop",
         difficulty: "Intermediate",
-        duration: "8 weeks",
-        rating: 49,
+        duration: "69 hours",
+        rating: 47,
+        category: "Web Development",
+        isRecommended: true,
+      },
+      {
+        title: "Machine Learning A-Z: AI, Python & R",
+        description: "Learn to create Machine Learning Algorithms in Python and R from two Data Science experts",
+        imageUrl: "https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=400&h=250&fit=crop",
+        difficulty: "Intermediate",
+        duration: "44 hours",
+        rating: 45,
         category: "Data Science",
+        isRecommended: true,
+      },
+      {
+        title: "React - The Complete Guide 2024",
+        description: "Dive in and learn React.js from scratch! Learn Reactjs, Hooks, Redux, React Routing, Animations, Next.js and way more!",
+        imageUrl: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400&h=250&fit=crop",
+        difficulty: "Intermediate",
+        duration: "48 hours",
+        rating: 46,
+        category: "Web Development",
         isRecommended: false,
+      },
+      {
+        title: "AWS Certified Solutions Architect",
+        description: "Pass the AWS Certified Solutions Architect Associate Exam! Complete Amazon Web Services cloud training",
+        imageUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=250&fit=crop",
+        difficulty: "Advanced",
+        duration: "26 hours",
+        rating: 46,
+        category: "Cloud Computing",
+        isRecommended: false,
+      },
+      {
+        title: "The Complete Node.js Developer Course",
+        description: "Learn Node.js by building real-world applications with Node, Express, MongoDB, Jest, and more!",
+        imageUrl: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=250&fit=crop",
+        difficulty: "Intermediate",
+        duration: "35 hours",
+        rating: 47,
+        category: "Backend Development",
+        isRecommended: true,
       },
     ]);
   }

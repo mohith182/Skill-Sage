@@ -9,6 +9,7 @@ import { QuickActions } from "@/components/QuickActions";
 import { RecentActivity } from "@/components/RecentActivity";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Mic } from "lucide-react";
+import { Link } from "wouter";
 
 interface DashboardProps {
   user: FirebaseUser;
@@ -34,10 +35,12 @@ export default function Dashboard({ user }: DashboardProps) {
                 <MessageCircle className="mr-2 h-5 w-5" />
                 Start AI Session
               </Button>
-              <Button variant="secondary" className="bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-xl font-semibold hover:bg-white/30 transition-all duration-200">
-                <Mic className="mr-2 h-5 w-5" />
-                Mock Interview
-              </Button>
+              <Link href="/interview">
+                <Button variant="secondary" className="bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-xl font-semibold hover:bg-white/30 transition-all duration-200">
+                  <Mic className="mr-2 h-5 w-5" />
+                  Mock Interview
+                </Button>
+              </Link>
             </div>
           </div>
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
