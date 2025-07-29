@@ -261,8 +261,8 @@ export function AIMentorChat({ userId }: AIMentorChatProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className={`w-10 h-10 bg-gradient-to-r from-secondary to-purple-600 rounded-xl flex items-center justify-center ${
-              animationsEnabled ? "animate-pulse hover:animate-bounce" : ""
-            } transition-all duration-300 hover:scale-110`}>
+              animationsEnabled ? "hover:scale-110" : ""
+            } transition-all duration-300`}>
               <Sparkles className="text-white h-5 w-5" />
             </div>
             <div>

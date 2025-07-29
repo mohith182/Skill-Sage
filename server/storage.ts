@@ -162,19 +162,25 @@ export class MemStorage implements IStorage {
     return course;
   }
 
-  async getChatMessages(userId: string): Promise<ChatMessage[]> {
+  async getChatMessages(userId: string, sessionId?: string): Promise<ChatMessage[]> {
     return Array.from(this.chatMessages.values())
-      .filter(message => message.userId === userId)
+      .filter(message => {
+        if (sessionId && sessionId !== "default") {
+          return message.userId === userId && message.sessionId === sessionId;
+        }
+        return message.userId === userId && (!message.sessionId || message.sessionId === "default");
+      })
       .sort((a, b) => (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0));
   }
 
-  async createChatMessage(insertMessage: InsertChatMessage): Promise<ChatMessage> {
+  async createChatMessage(insertMessage: InsertChatMessage & { sessionId?: string }): Promise<ChatMessage> {
     const id = randomUUID();
     const message: ChatMessage = { 
       ...insertMessage, 
       id,
       createdAt: new Date(),
       isAI: insertMessage.isAI || null,
+      sessionId: insertMessage.sessionId || "default",
     };
     this.chatMessages.set(id, message);
     return message;

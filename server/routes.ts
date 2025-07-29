@@ -164,13 +164,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/chat", async (req, res) => {
     try {
-      const { userId, content } = req.body;
+      const { userId, content, sessionId } = req.body;
       
       // Save user message
       const userMessage = await storage.createChatMessage({
         userId,
         content,
         isAI: false,
+        sessionId: sessionId || "default",
       });
 
       // Get AI response
@@ -182,6 +183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         content: aiResponse.message,
         isAI: true,
+        sessionId: sessionId || "default",
       });
 
       // Create activity
@@ -322,6 +324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         content: `📄 **Document Analysis for "${fileName}"**\n\n${analysis.summary}\n\n**Career Recommendations:**\n${analysis.recommendations.map(rec => `• ${rec}`).join('\n')}`,
         isAI: true,
+        sessionId: "default",
       });
 
       // Clean up uploaded file
