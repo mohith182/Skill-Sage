@@ -10,9 +10,17 @@ import {
   type Activity,
   type InsertActivity,
   type InterviewSession,
-  type InsertInterviewSession
+  type InsertInterviewSession,
+  users,
+  courses,
+  chatMessages,
+  skillProgress,
+  activities,
+  interviewSessions
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -237,4 +245,197 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...insertUser,
+        role: insertUser.role || "student",
+        photoURL: insertUser.photoURL || null,
+        skills: insertUser.skills || [],
+        credits: insertUser.credits || 0,
+        internshipHours: insertUser.internshipHours || 0,
+        certificates: insertUser.certificates || 0,
+      })
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return user || undefined;
+  }
+
+  async getCourses(): Promise<Course[]> {
+    return await db.select().from(courses);
+  }
+
+  async getRecommendedCourses(userId: string): Promise<Course[]> {
+    return await db.select().from(courses).where(eq(courses.isRecommended, true));
+  }
+
+  async getCourse(id: string): Promise<Course | undefined> {
+    const [course] = await db.select().from(courses).where(eq(courses.id, id));
+    return course || undefined;
+  }
+
+  async createCourse(insertCourse: InsertCourse): Promise<Course> {
+    const [course] = await db
+      .insert(courses)
+      .values({
+        ...insertCourse,
+        imageUrl: insertCourse.imageUrl || null,
+        rating: insertCourse.rating || null,
+        isRecommended: insertCourse.isRecommended || null,
+      })
+      .returning();
+    return course;
+  }
+
+  async getChatMessages(userId: string): Promise<ChatMessage[]> {
+    return await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.userId, userId))
+      .orderBy(chatMessages.createdAt);
+  }
+
+  async createChatMessage(insertMessage: InsertChatMessage): Promise<ChatMessage> {
+    const [message] = await db
+      .insert(chatMessages)
+      .values({
+        ...insertMessage,
+        isAI: insertMessage.isAI || null,
+      })
+      .returning();
+    return message;
+  }
+
+  async getSkillProgress(userId: string): Promise<SkillProgress[]> {
+    return await db
+      .select()
+      .from(skillProgress)
+      .where(eq(skillProgress.userId, userId));
+  }
+
+  async updateSkillProgress(userId: string, skillName: string, progress: number): Promise<SkillProgress> {
+    // Check if record exists first
+    const [existing] = await db
+      .select()
+      .from(skillProgress)
+      .where(and(
+        eq(skillProgress.userId, userId),
+        eq(skillProgress.skillName, skillName)
+      ));
+
+    if (existing) {
+      // Update existing record
+      const [updated] = await db
+        .update(skillProgress)
+        .set({ progress, updatedAt: new Date() })
+        .where(and(
+          eq(skillProgress.userId, userId),
+          eq(skillProgress.skillName, skillName)
+        ))
+        .returning();
+      return updated;
+    }
+
+    // Create new record if not exists
+    const [newRecord] = await db
+      .insert(skillProgress)
+      .values({
+        userId,
+        skillName,
+        progress,
+      })
+      .returning();
+    return newRecord;
+  }
+
+  async getActivities(userId: string): Promise<Activity[]> {
+    return await db
+      .select()
+      .from(activities)
+      .where(eq(activities.userId, userId))
+      .orderBy(activities.createdAt);
+  }
+
+  async createActivity(insertActivity: InsertActivity): Promise<Activity> {
+    const [activity] = await db
+      .insert(activities)
+      .values(insertActivity)
+      .returning();
+    return activity;
+  }
+
+  async getInterviewSessions(userId: string): Promise<InterviewSession[]> {
+    return await db
+      .select()
+      .from(interviewSessions)
+      .where(eq(interviewSessions.userId, userId))
+      .orderBy(interviewSessions.createdAt);
+  }
+
+  async createInterviewSession(insertSession: InsertInterviewSession): Promise<InterviewSession> {
+    const [session] = await db
+      .insert(interviewSessions)
+      .values({
+        ...insertSession,
+        feedback: insertSession.feedback || null,
+        score: insertSession.score || null,
+      })
+      .returning();
+    return session;
+  }
+}
+
+// Create sample data function for database
+async function initializeSampleData() {
+  const existingCourses = await db.select().from(courses);
+  
+  if (existingCourses.length === 0) {
+    await db.insert(courses).values([
+      {
+        title: "Deep Learning Fundamentals",
+        description: "Master neural networks and deep learning with hands-on projects.",
+        imageUrl: "https://images.unsplash.com/photo-1555949963-aa79dcee981c?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200",
+        difficulty: "Beginner",
+        duration: "12 weeks",
+        rating: 48,
+        category: "AI/ML",
+        isRecommended: true,
+      },
+      {
+        title: "Advanced Python for Data Science",
+        description: "Learn advanced Python techniques for data analysis and visualization.",
+        imageUrl: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200",
+        difficulty: "Intermediate",
+        duration: "8 weeks",
+        rating: 49,
+        category: "Data Science",
+        isRecommended: false,
+      },
+    ]);
+  }
+}
+
+export const storage = new DatabaseStorage();
+
+// Initialize sample data
+initializeSampleData().catch(console.error);

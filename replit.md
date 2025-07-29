@@ -22,7 +22,8 @@ Preferred communication style: Simple, everyday language.
 - **Runtime**: Node.js with Express.js
 - **Language**: TypeScript
 - **API Design**: RESTful API endpoints
-- **Database ORM**: Drizzle ORM with PostgreSQL
+- **Database**: PostgreSQL with Drizzle ORM
+- **Connection**: Neon Database with connection pooling
 - **AI Integration**: Google Gemini API for conversational AI and analysis
 
 ### Authentication System
@@ -138,11 +139,18 @@ Preferred communication style: Simple, everyday language.
 - `NODE_ENV`: Environment mode (development/production)
 
 ### Database Schema
-- **Users**: Core user profiles with skills and progress
-- **Courses**: Course catalog with metadata and difficulty levels
-- **Chat Messages**: Persistent conversation history
-- **Skill Progress**: Individual skill development tracking
-- **Activities**: User action and achievement logging
-- **Interview Sessions**: Mock interview results and feedback
+- **Users**: Core user profiles with skills and progress (PostgreSQL)
+- **Courses**: Course catalog with metadata and difficulty levels (PostgreSQL)
+- **Chat Messages**: Persistent conversation history (PostgreSQL)
+- **Skill Progress**: Individual skill development tracking (PostgreSQL)
+- **Activities**: User action and achievement logging (PostgreSQL)
+- **Interview Sessions**: Mock interview results and feedback (PostgreSQL)
+- **User Courses**: User enrollment and progress tracking (PostgreSQL)
 
-The application follows a monolithic architecture with clear separation between client and server, utilizing modern web technologies for a responsive and intelligent career guidance platform.
+### Recent Changes
+- **Database Migration**: Successfully migrated from in-memory storage to PostgreSQL database
+- **Database Setup**: Created and configured Neon PostgreSQL database with Drizzle ORM
+- **Schema Deployment**: All database tables created and sample data initialized
+- **Connection Pooling**: Implemented efficient database connection handling
+
+The application follows a monolithic architecture with clear separation between client and server, utilizing modern web technologies and persistent data storage for a responsive and intelligent career guidance platform.
