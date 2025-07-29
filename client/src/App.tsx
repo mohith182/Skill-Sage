@@ -44,10 +44,10 @@ function Router() {
         {user ? <Dashboard user={user} /> : <Login onUserChange={setUser} />}
       </Route>
       <Route path="/courses">
-        {user ? <Courses /> : <Login onUserChange={setUser} />}
+        {user ? <Courses user={user} /> : <Login onUserChange={setUser} />}
       </Route>
       <Route path="/interview">
-        {user ? <Interview userId={user.uid} /> : <Login onUserChange={setUser} />}
+        {user ? <Interview user={user} /> : <Login onUserChange={setUser} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { User as FirebaseUser } from "firebase/auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Code, Users, TrendingUp, Mic, Play, RotateCcw, Trophy, Clock, Target } from "lucide-react";
 
 interface InterviewProps {
-  userId: string;
+  user: FirebaseUser;
 }
 
 interface InterviewSession {
@@ -49,7 +51,8 @@ const interviewTypes = [
   },
 ];
 
-export default function Interview({ userId }: InterviewProps) {
+export default function Interview({ user }: InterviewProps) {
+  const userId = user.uid;
   const [selectedType, setSelectedType] = useState<string>("technical");
   const [currentQuestion, setCurrentQuestion] = useState<string>("");
   const [userResponse, setUserResponse] = useState<string>("");
@@ -117,6 +120,7 @@ export default function Interview({ userId }: InterviewProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-blue-50">
+      <Navigation user={user} />
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
