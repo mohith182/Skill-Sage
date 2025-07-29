@@ -7,9 +7,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { auth } from "@/lib/firebase";
 import Dashboard from "@/pages/Dashboard";
-import Login from "@/pages/Login";
 import Courses from "@/pages/Courses";
 import Interview from "@/pages/Interview";
+import Resume from "@/pages/Resume";
+import Jobs from "@/pages/Jobs";
+import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -48,6 +50,12 @@ function Router() {
       </Route>
       <Route path="/interview">
         {user ? <Interview user={user} /> : <Login onUserChange={setUser} />}
+      </Route>
+      <Route path="/resume">
+        {user ? <Resume user={user} /> : <Login onUserChange={setUser} />}
+      </Route>
+      <Route path="/jobs">
+        {user ? <Jobs user={user} /> : <Login onUserChange={setUser} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

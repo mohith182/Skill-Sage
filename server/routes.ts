@@ -395,6 +395,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Resume analysis
+  app.post("/api/resume/analyze", upload.single('resume'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No resume file uploaded" });
+      }
+
+      const { userId } = req.body;
+      const filePath = req.file.path;
+      const fileName = req.file.originalname;
+
+      // Analyze resume with AI
+      const analysis = await analyzeResume(filePath, fileName);
+
+      // Create activity
+      await storage.createActivity({
+        userId,
+        type: "resume_review",
+        description: `Resume "${fileName}" analyzed with score ${analysis.score}/100`,
+      });
+
+      // Clean up uploaded file
+      fs.unlinkSync(filePath);
+
+      res.json({ 
+        message: "Resume analyzed successfully",
+        analysis
+      });
+    } catch (error) {
+      console.error("Resume analysis error:", error);
+      res.status(500).json({ message: "Failed to analyze resume" });
+    }
+  });
+
+  // Job search
+  app.post("/api/jobs/search", async (req, res) => {
+    try {
+      const { query, location, userId } = req.body;
+      
+      // Get job recommendations from AI
+      const jobs = await searchJobs(query, location);
+
+      // Create activity
+      await storage.createActivity({
+        userId,
+        type: "job_search",
+        description: `Searched for "${query}" jobs${location ? ` in ${location}` : ''}`,
+      });
+
+      res.json({ 
+        jobs,
+        query,
+        location: location || "Any location"
+      });
+    } catch (error) {
+      console.error("Job search error:", error);
+      res.status(500).json({ message: "Failed to search jobs" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
