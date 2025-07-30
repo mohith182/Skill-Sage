@@ -1,6 +1,6 @@
 import { User as FirebaseUser } from "firebase/auth";
 import { Navigation } from "@/components/Navigation";
-import { AIMentorChat } from "@/components/AIMentorChat";
+import AIMentorChat from "@/components/AIMentorChat";
 import { CourseRecommendations } from "@/components/CourseRecommendations";
 import { InterviewSimulator } from "@/components/InterviewSimulator";
 import { SkillsProgress } from "@/components/SkillsProgress";

@@ -1,22 +1,22 @@
-import type { Express } from "express";
-import { createServer, type Server } from "http";
+import express from "express";
+import { createServer } from "http";
+import { db } from "./db";
+import { courses, chatMessages } from "../shared/schema";
+import { getCareerAdvice } from "./services/geminiService";
+import { authenticateUser } from "./authMiddleware";
+import { eq } from "drizzle-orm";
 import multer from "multer";
-import fs from "fs";
 import path from "path";
+import fs from "fs";
+import { analyzeResume, analyzeDocument, generateInterviewQuestion, analyzeInterviewResponse, searchJobs } from "./services/geminiService";
 import { storage } from "./storage";
-import { 
-  getCareerAdvice, 
-  analyzeInterviewResponse, 
-  generateCourseRecommendations,
-  generateInterviewQuestion,
-  analyzeDocument 
-} from "./services/geminiService";
-import { 
-  insertChatMessageSchema, 
-  insertActivitySchema, 
-  insertInterviewSessionSchema,
-  insertUserSchema 
-} from "@shared/schema";
+import {
+  insertUserSchema,
+  insertChatMessageSchema,
+  insertSkillProgressSchema,
+  insertActivitySchema,
+  insertInterviewSessionSchema 
+} from "../shared/schema";
 
 // Configure multer for file uploads
 const upload = multer({ 
@@ -37,7 +37,7 @@ const upload = multer({
   }
 });
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: express.Express) {
   
   // User routes
   app.get("/api/user/:id", async (req, res) => {
@@ -153,22 +153,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Chat routes
-  app.get("/api/chat/:userId", async (req, res) => {
+  // Get chat messages for a user
+  app.get("/api/chat", authenticateUser, async (req, res) => {
+    const user = (req as any).user;
+    
     try {
-      const messages = await storage.getChatMessages(req.params.userId);
+      const messages = await db.select().from(chatMessages)
+        .where(eq(chatMessages.userId, user.uid))
+        .orderBy(chatMessages.createdAt);
+      
       res.json(messages);
     } catch (error) {
-      res.status(500).json({ message: "Failed to get chat messages" });
+      console.error("Error fetching chat messages:", error);
+      res.status(500).json({ message: "Failed to fetch chat messages" });
     }
   });
 
-  app.get("/api/chat/:userId/:sessionId", async (req, res) => {
+  // Protect the chat endpoint with the new middleware
+  app.post("/api/chat", authenticateUser, async (req, res) => {
+    const { message } = req.body;
+    const user = (req as any).user;
+
+    if (!message) {
+      return res.status(400).json({ message: "Message is required" });
+    }
+
     try {
-      const messages = await storage.getChatMessages(req.params.userId, req.params.sessionId);
-      res.json(messages);
+      // Save user's message
+      await db.insert(chatMessages).values({
+        userId: user.uid,
+        content: message,
+        isAI: false,
+      });
+
+      // Get AI's response
+      const advice = await getCareerAdvice(message);
+      
+      // Save AI's response
+      await db.insert(chatMessages).values({
+        userId: user.uid,
+        content: advice.message,
+        isAI: true,
+      });
+
+      // Return the AI response
+      res.json({ message: advice.message, suggestions: advice.suggestions });
     } catch (error) {
-      res.status(500).json({ message: "Failed to get chat messages" });
+      console.error("Chat error:", error);
+      res.status(500).json({ message: "Failed to process chat message" });
     }
   });
 
@@ -213,44 +245,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Session deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete chat session" });
-    }
-  });
-
-  app.post("/api/chat", async (req, res) => {
-    try {
-      const { userId, content, sessionId } = req.body;
-      
-      // Save user message
-      const userMessage = await storage.createChatMessage({
-        userId,
-        content,
-        isAI: false,
-        sessionId: sessionId || "default",
-      });
-
-      // Get AI response
-      const user = await storage.getUser(userId);
-      const aiResponse = await getCareerAdvice(content, user);
-      
-      // Save AI message
-      const aiMessage = await storage.createChatMessage({
-        userId,
-        content: aiResponse.message,
-        isAI: true,
-        sessionId: sessionId || "default",
-      });
-
-      // Create activity
-      await storage.createActivity({
-        userId,
-        type: "chat_session",
-        description: "AI mentor session completed",
-      });
-
-      res.json({ userMessage, aiMessage, suggestions: aiResponse.suggestions });
-    } catch (error) {
-      console.error("Chat error:", error);
-      res.status(500).json({ message: "Failed to process chat message" });
     }
   });
 
@@ -399,19 +393,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/resume/analyze", upload.single('resume'), async (req, res) => {
     try {
       if (!req.file) {
-        return res.status(400).json({ message: "No resume file uploaded" });
+        return res.status(400).json({ 
+          message: "No resume file uploaded",
+          error: "Please select a file to upload"
+        });
       }
 
       const { userId } = req.body;
       const filePath = req.file.path;
       const fileName = req.file.originalname;
 
+      console.log(`Processing resume: ${fileName}`);
+
       // Analyze resume with AI
       const analysis = await analyzeResume(filePath, fileName);
 
+      console.log(`Analysis completed with score: ${analysis.score}`);
+
       // Create activity
       await storage.createActivity({
-        userId,
+        userId: userId || 'anonymous',
         type: "resume_review",
         description: `Resume "${fileName}" analyzed with score ${analysis.score}/100`,
       });
@@ -421,28 +422,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ 
         message: "Resume analyzed successfully",
-        analysis
+        analysis: {
+          score: analysis.score,
+          summary: analysis.summary,
+          strengths: analysis.strengths || [],
+          improvements: analysis.improvements || [],
+          atsOptimization: analysis.atsOptimization || [],
+          extractedData: {
+            name: analysis.extractedData?.name || 'N/A',
+            email: analysis.extractedData?.email || 'N/A',
+            phone: analysis.extractedData?.phone || 'N/A',
+            experience: analysis.extractedData?.experience || [],
+            education: analysis.extractedData?.education || []
+          }
+        }
       });
     } catch (error) {
       console.error("Resume analysis error:", error);
-      res.status(500).json({ message: "Failed to analyze resume" });
+      
+      // Clean up file if it exists
+      if (req.file?.path) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (e) {
+          console.error("Failed to clean up file:", e);
+        }
+      }
+
+      res.status(500).json({ 
+        message: "Failed to analyze resume",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
-  // Job search
+  // Job search - GET endpoint for frontend compatibility
+  app.get("/api/jobs/search", async (req, res) => {
+    try {
+      const { query, location, userId } = req.query;
+      
+      if (!query) {
+        return res.status(400).json({ message: "Query parameter is required" });
+      }
+      
+      // Get job recommendations from AI
+      const jobs = await searchJobs(query as string, location as string);
+
+      // Create activity if userId is provided
+      if (userId) {
+        await storage.createActivity({
+          userId: userId as string,
+          type: "job_search",
+          description: `Searched for "${query}" jobs${location ? ` in ${location}` : ''}`,
+        });
+      }
+
+      res.json({ 
+        jobs,
+        query,
+        location: location || "Any location"
+      });
+    } catch (error) {
+      console.error("Job search error:", error);
+      res.status(500).json({ message: "Failed to search jobs" });
+    }
+  });
+
+  // Job search - POST endpoint (enhanced)
   app.post("/api/jobs/search", async (req, res) => {
     try {
       const { query, location, userId } = req.body;
+      
+      if (!query) {
+        return res.status(400).json({ message: "Query is required" });
+      }
       
       // Get job recommendations from AI
       const jobs = await searchJobs(query, location);
 
       // Create activity
-      await storage.createActivity({
-        userId,
-        type: "job_search",
-        description: `Searched for "${query}" jobs${location ? ` in ${location}` : ''}`,
-      });
+      if (userId) {
+        await storage.createActivity({
+          userId,
+          type: "job_search",
+          description: `Searched for "${query}" jobs${location ? ` in ${location}` : ''}`,
+        });
+      }
 
       res.json({ 
         jobs,

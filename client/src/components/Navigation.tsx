@@ -49,6 +49,8 @@ export function Navigation({ user }: NavigationProps) {
               { name: "Dashboard", href: "/" },
               { name: "Courses", href: "/courses" },
               { name: "Interview", href: "/interview" },
+              { name: "Resume", href: "/resume" },
+              { name: "Jobs", href: "/jobs" },
             ].map((item) => (
               <Link key={item.name} href={item.href}>
                 <span className="text-neutral-600 hover:text-primary transition-colors duration-200 font-medium cursor-pointer">

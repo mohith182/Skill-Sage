@@ -1,5 +1,15 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, signInWithRedirect, GoogleAuthProvider, getRedirectResult, signOut } from "firebase/auth";
+import {
+  getAuth,
+  signInWithPopup,
+  signInWithRedirect,
+  GoogleAuthProvider,
+  getRedirectResult,
+  signOut,
+  onAuthStateChanged,
+  User as FirebaseUser,
+} from "firebase/auth";
+import { useEffect, useState } from "react";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -15,15 +25,15 @@ console.log("Firebase Config:", {
   authDomain: firebaseConfig.authDomain,
   projectId: firebaseConfig.projectId,
   hasAppId: !!firebaseConfig.appId,
-  currentURL: window.location.href
+  currentURL: window.location.href,
 });
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 const provider = new GoogleAuthProvider();
-provider.addScope('email');
-provider.addScope('profile');
+provider.addScope("email");
+provider.addScope("profile");
 
 // Try popup first, fallback to redirect if needed
 export async function login() {
@@ -34,7 +44,11 @@ export async function login() {
     return result;
   } catch (error: any) {
     console.log("Popup failed, trying redirect:", error.code);
-    if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+    if (
+      error.code === "auth/popup-blocked" ||
+      error.code === "auth/popup-closed-by-user" ||
+      error.code === "auth/cancelled-popup-request"
+    ) {
       console.log("Using redirect method instead...");
       return signInWithRedirect(auth, provider);
     }
@@ -48,4 +62,19 @@ export function logout() {
 
 export function handleRedirect() {
   return getRedirectResult(auth);
+}
+
+// Define and export the useUser Hook
+export function useUser() {
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  return user;
 }

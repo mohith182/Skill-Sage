@@ -1,0 +1,396 @@
+===============================================================================
+                    🤖 SKILLSAGE AI - COMPLETE QUESTIONS LIST
+===============================================================================
+
+You can ask the AI ANYTHING! Here are examples organized by category:
+
+📚 MATHEMATICS QUESTIONS
+===============================================================================
+Basic Math:
+- "What is 2 + 2?"
+- "How do I solve 3x + 5 = 20?"
+- "Calculate the area of a circle with radius 10"
+- "What's 15% of 200?"
+- "How to convert fractions to decimals?"
+
+Algebra:
+- "Solve for x: 2x² - 5x + 3 = 0"
+- "Explain quadratic equations"
+- "How to factor polynomials?"
+- "What are linear equations?"
+- "Graph the function y = 2x + 3"
+
+Geometry:
+- "What's the Pythagorean theorem?"
+- "How to find the area of a triangle?"
+- "Calculate volume of a sphere"
+- "What are angles in geometry?"
+- "Explain parallel lines and angles"
+
+Calculus:
+- "What is a derivative?"
+- "How to integrate x²?"
+- "Find the limit of (x²-1)/(x-1) as x approaches 1"
+- "Explain the chain rule"
+- "What is the fundamental theorem of calculus?"
+
+Statistics:
+- "What is standard deviation?"
+- "How to calculate mean, median, mode?"
+- "Explain normal distribution"
+- "What is correlation vs causation?"
+- "How to interpret p-values?"
+
+🔬 SCIENCE QUESTIONS
+===============================================================================
+Physics:
+- "What is Newton's first law?"
+- "How does gravity work?"
+- "Explain Einstein's theory of relativity"
+- "What is electromagnetic radiation?"
+- "How do magnets work?"
+- "What is quantum mechanics?"
+- "Calculate force using F = ma"
+- "What is the speed of light?"
+
+Chemistry:
+- "What is the periodic table?"
+- "How do chemical bonds work?"
+- "What is photosynthesis?"
+- "Explain acids and bases"
+- "What is a molecule?"
+- "How does combustion work?"
+- "What is pH?"
+- "Explain oxidation and reduction"
+
+Biology:
+- "How does DNA work?"
+- "What is evolution?"
+- "Explain how cells divide"
+- "What is photosynthesis?"
+- "How does the heart work?"
+- "What is the nervous system?"
+- "How do vaccines work?"
+- "What causes genetic mutations?"
+
+Earth Science:
+- "How are mountains formed?"
+- "What causes earthquakes?"
+- "How does the water cycle work?"
+- "What is climate change?"
+- "How are fossils formed?"
+- "What causes volcanoes?"
+
+🏛️ HISTORY QUESTIONS
+===============================================================================
+Ancient History:
+- "Tell me about Ancient Egypt"
+- "How did Rome fall?"
+- "What was the Bronze Age?"
+- "Who were the Vikings?"
+- "What was Ancient Greece like?"
+- "Tell me about the Mayan civilization"
+
+Medieval History:
+- "What was feudalism?"
+- "Tell me about the Crusades"
+- "What was the Black Death?"
+- "Who was Charlemagne?"
+- "What was the Byzantine Empire?"
+
+Modern History:
+- "What caused World War 1?"
+- "Why did World War 2 happen?"
+- "What was the Cold War?"
+- "Tell me about the Industrial Revolution"
+- "What was the American Revolution?"
+- "What was the French Revolution?"
+- "What was the Renaissance?"
+
+Recent History:
+- "What happened on 9/11?"
+- "What was the Berlin Wall?"
+- "Tell me about the Space Race"
+- "What was the Vietnam War?"
+- "What was the Civil Rights Movement?"
+
+📝 ENGLISH & LITERATURE QUESTIONS
+===============================================================================
+Grammar:
+- "What's the difference between 'your' and 'you're'?"
+- "How to use semicolons?"
+- "What are parts of speech?"
+- "Explain active vs passive voice"
+- "How to write a thesis statement?"
+
+Writing:
+- "How to write an essay?"
+- "What's a good essay structure?"
+- "How to write a story?"
+- "Tips for creative writing"
+- "How to improve my vocabulary?"
+- "How to write a resume?"
+- "How to write a cover letter?"
+
+Literature:
+- "Analyze Shakespeare's Hamlet"
+- "What are literary devices?"
+- "Explain symbolism in literature"
+- "What is irony?"
+- "Tell me about famous authors"
+- "What are different poetry forms?"
+- "Explain themes in To Kill a Mockingbird"
+
+💻 PROGRAMMING & TECHNOLOGY QUESTIONS
+===============================================================================
+Python:
+- "How to create a variable in Python?"
+- "Show me Python loops with examples"
+- "How to create functions in Python?"
+- "What are Python lists?"
+- "How to handle errors in Python?"
+- "Create a calculator in Python"
+- "What is object-oriented programming?"
+
+JavaScript:
+- "How to create variables in JavaScript?"
+- "Show me JavaScript functions"
+- "How to manipulate the DOM?"
+- "What are JavaScript arrays?"
+- "How to handle events in JavaScript?"
+- "Create a web page with JavaScript"
+
+Other Programming:
+- "What is Java?"
+- "How to learn C++?"
+- "What is HTML and CSS?"
+- "How do databases work?"
+- "What is React?"
+- "Explain APIs"
+- "What is machine learning?"
+- "How does artificial intelligence work?"
+
+Web Development:
+- "How to build a website?"
+- "What is responsive design?"
+- "How to use Bootstrap?"
+- "What is Node.js?"
+- "How do servers work?"
+
+🌍 GENERAL KNOWLEDGE QUESTIONS
+===============================================================================
+Geography:
+- "What is the capital of France?"
+- "How many continents are there?"
+- "What's the largest ocean?"
+- "Where is the Amazon rainforest?"
+- "What causes tsunamis?"
+- "How are islands formed?"
+
+Countries & Cultures:
+- "Tell me about Japan"
+- "What is Indian culture like?"
+- "What languages are spoken in Africa?"
+- "What is European Union?"
+- "Tell me about Chinese traditions"
+
+Current Events:
+- "What is artificial intelligence?"
+- "How does the internet work?"
+- "What is cryptocurrency?"
+- "What is climate change?"
+- "What is social media impact?"
+
+🏥 HEALTH & MEDICINE QUESTIONS
+===============================================================================
+Human Body:
+- "How does the brain work?"
+- "What is the circulatory system?"
+- "How do muscles work?"
+- "What is the immune system?"
+- "How do we see and hear?"
+- "What happens when we sleep?"
+
+Health & Nutrition:
+- "What is a balanced diet?"
+- "How much water should I drink?"
+- "What are vitamins and minerals?"
+- "How does exercise help?"
+- "What causes stress?"
+- "How to maintain mental health?"
+
+Medical Conditions:
+- "What is diabetes?"
+- "How do vaccines work?"
+- "What causes allergies?"
+- "What is high blood pressure?"
+- "How do antibiotics work?"
+
+💼 BUSINESS & ECONOMICS QUESTIONS
+===============================================================================
+Basic Economics:
+- "What is supply and demand?"
+- "How does inflation work?"
+- "What is GDP?"
+- "How do stock markets work?"
+- "What is entrepreneurship?"
+
+Personal Finance:
+- "How to budget money?"
+- "What is compound interest?"
+- "How to invest money?"
+- "What is a credit score?"
+- "How do loans work?"
+
+Business:
+- "How to start a business?"
+- "What is marketing?"
+- "How does e-commerce work?"
+- "What is a business plan?"
+- "What are different business models?"
+
+🎨 ARTS & CULTURE QUESTIONS
+===============================================================================
+Art:
+- "Who was Leonardo da Vinci?"
+- "What is abstract art?"
+- "Tell me about famous paintings"
+- "What are different art movements?"
+- "How to analyze artwork?"
+
+Music:
+- "What are musical genres?"
+- "Who was Mozart?"
+- "How do instruments work?"
+- "What is music theory?"
+- "Tell me about famous composers"
+
+Philosophy:
+- "What is the meaning of life?"
+- "Who was Socrates?"
+- "What is ethics?"
+- "What do philosophers study?"
+- "What is logic?"
+
+🧠 PSYCHOLOGY & LEARNING QUESTIONS
+===============================================================================
+Psychology:
+- "How does memory work?"
+- "What are emotions?"
+- "How do we learn?"
+- "What is personality?"
+- "How does the mind work?"
+
+Study & Learning:
+- "How to study effectively?"
+- "How to improve memory?"
+- "What are good study habits?"
+- "How to manage time?"
+- "How to overcome procrastination?"
+- "How to prepare for exams?"
+- "How to take better notes?"
+
+🔮 FUTURISTIC & ADVANCED QUESTIONS
+===============================================================================
+Technology:
+- "What is quantum computing?"
+- "How will AI change the world?"
+- "What is virtual reality?"
+- "What is blockchain?"
+- "What are smart cities?"
+- "How do electric cars work?"
+
+Space & Universe:
+- "How big is the universe?"
+- "What are black holes?"
+- "How do rockets work?"
+- "What is the Big Bang theory?"
+- "Are there aliens?"
+- "How do we explore space?"
+
+🎯 PROBLEM-SOLVING QUESTIONS
+===============================================================================
+- "How to solve conflicts?"
+- "How to make decisions?"
+- "How to think critically?"
+- "How to be creative?"
+- "How to solve problems step by step?"
+- "How to analyze situations?"
+
+🏃‍♂️ SPORTS & FITNESS QUESTIONS
+===============================================================================
+- "How to get fit?"
+- "What are good exercises?"
+- "How does training work?"
+- "What sports are popular?"
+- "How to build muscle?"
+- "What is nutrition for athletes?"
+
+🍳 COOKING & FOOD QUESTIONS
+===============================================================================
+- "How to cook pasta?"
+- "What are basic cooking skills?"
+- "How to bake bread?"
+- "What makes food healthy?"
+- "How to meal plan?"
+- "What are different cuisines?"
+
+🌱 ENVIRONMENT & NATURE QUESTIONS
+===============================================================================
+- "How to protect the environment?"
+- "What is recycling?"
+- "How do ecosystems work?"
+- "What causes pollution?"
+- "How do plants grow?"
+- "What is biodiversity?"
+
+💡 CREATIVE & HOBBY QUESTIONS
+===============================================================================
+- "How to learn photography?"
+- "How to start drawing?"
+- "How to write poetry?"
+- "How to learn guitar?"
+- "How to start gardening?"
+- "How to learn new languages?"
+
+🤔 PHILOSOPHICAL & DEEP QUESTIONS
+===============================================================================
+- "What is consciousness?"
+- "What is reality?"
+- "What is truth?"
+- "What is justice?"
+- "What is happiness?"
+- "What is success?"
+- "What is love?"
+- "What is friendship?"
+
+===============================================================================
+                           🎯 HOW TO ASK QUESTIONS
+===============================================================================
+
+TIPS FOR BETTER ANSWERS:
+1. Be specific: "How to solve quadratic equations?" vs "Help with math"
+2. Include context: "I'm a beginner" or "This is for my exam"
+3. Ask follow-ups: "Can you give me more examples?"
+4. Request different formats: "Explain with diagrams" or "Give me code"
+
+QUESTION FORMATS THAT WORK WELL:
+- "How to..." (How to solve, How to build, How to understand)
+- "What is..." (What is gravity, What is programming)
+- "Why does..." (Why does this happen, Why is this important)
+- "Explain..." (Explain quantum physics, Explain with examples)
+- "Show me..." (Show me code, Show me examples)
+- "Tell me about..." (Tell me about history, Tell me about science)
+
+EXAMPLES OF GREAT QUESTIONS:
+✅ "Explain photosynthesis with examples"
+✅ "How to solve this math problem: 2x + 5 = 15"
+✅ "What caused World War 2 and what were the effects?"
+✅ "Show me Python code for a simple calculator"
+✅ "How does the human heart work, step by step?"
+
+REMEMBER: You can ask ANYTHING! The AI is designed to help you learn and understand any topic. Don't hesitate to ask follow-up questions or request clarification!
+
+===============================================================================
+                    🚀 START ASKING AND START LEARNING!
+=============================================================================== 

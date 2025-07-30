@@ -1,588 +1,1043 @@
 
 import { useState, useRef, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Expand, 
-  Settings, 
-  Paperclip, 
-  Mic, 
-  Send, 
-  Plus, 
-  Trash2, 
-  MessageSquare,
-  Sparkles,
-  RotateCcw,
-  Volume2,
-  VolumeX,
-  Moon,
-  Sun,
-  Palette,
-  Upload,
-  FileText,
-  MicOff
-} from "lucide-react";
-import { ChatMessage } from "@shared/schema";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Send, Bot, User, Loader2 } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useUser } from "@/lib/firebase";
+import { useToast } from "@/hooks/use-toast";
+
+interface Message {
+  id: string;
+  content: string;
+  isAI: boolean;
+  createdAt: number;
+}
 
 interface AIMentorChatProps {
-  userId: string;
+  userId?: string;
 }
 
-interface ChatSession {
-  id: string;
-  name: string;
-  createdAt: string;
-  messageCount: number;
-}
-
-export function AIMentorChat({ userId }: AIMentorChatProps) {
-  const [message, setMessage] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [currentSession, setCurrentSession] = useState<string>("default");
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [chatTheme, setChatTheme] = useState<"light" | "dark" | "gradient">("gradient");
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [autoScroll, setAutoScroll] = useState(true);
-  const [animationsEnabled, setAnimationsEnabled] = useState(true);
-  const [isListening, setIsListening] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+export default function AIMentorChat({ userId }: AIMentorChatProps) {
+  const [input, setInput] = useState("");
+  const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
+  const user = useUser();
+  const { toast } = useToast();
 
-  const { data: messages = [], isLoading } = useQuery<ChatMessage[]>({
-    queryKey: ["/api/chat", userId, currentSession],
+  // Fetch messages (fallback to local messages if backend unavailable)
+  const { data: messages = [], isLoading } = useQuery<Message[]>({
+    queryKey: ["chatMessages", user?.uid],
+    queryFn: async () => {
+      if (!user) return localMessages;
+      
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch("/api/chat", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        if (!response.ok) throw new Error("Failed to fetch messages");
+        return await response.json();
+      } catch (error) {
+        console.warn("Backend not available, using local messages:", error);
+        return localMessages;
+      }
+    },
+    enabled: !!user,
   });
 
-  const { data: chatSessions = [] } = useQuery<ChatSession[]>({
-    queryKey: ["/api/chat/sessions", userId],
-  });
-
+  // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ content }: { content: string }) => {
-      const response = await apiRequest("POST", "/api/chat", {
-        userId,
-        content,
-        sessionId: currentSession,
+    mutationFn: async (message: string) => {
+      if (!user) throw new Error("User not authenticated");
+      const token = await user.getIdToken();
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message }),
       });
-      return response.json();
-    },
-    onMutate: () => {
-      setIsTyping(true);
-      if (soundEnabled) {
-        // Play send sound
-        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmEaBDeDzPTOgTkKJ2u87Nqc');
-        audio.play().catch(() => {});
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chat", userId, currentSession] });
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions", userId] });
-      setMessage("");
-      setIsTyping(false);
-      if (soundEnabled) {
-        // Play receive sound
-        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmEaBDeDzPTOgTkKJ2u87Nqc');
-        audio.play().catch(() => {});
-      }
-    },
-    onError: () => {
-      setIsTyping(false);
-    },
-  });
 
-  const createNewChatMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/chat/sessions", {
-        userId,
-        name: `Chat ${chatSessions.length + 1}`,
-      });
-      return response.json();
-    },
-    onSuccess: (data) => {
-      setCurrentSession(data.id);
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions", userId] });
-    },
-  });
-
-  const deleteChatMutation = useMutation({
-    mutationFn: async (sessionId: string) => {
-      await apiRequest("DELETE", `/api/chat/sessions/${sessionId}`, {});
-    },
-    onSuccess: () => {
-      if (currentSession === arguments[0]) {
-        setCurrentSession("default");
-      }
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions", userId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/chat", userId] });
-    },
-  });
-
-  const uploadDocumentMutation = useMutation({
-    mutationFn: async (file: File) => {
-      setIsUploading(true);
-      const formData = new FormData();
-      formData.append('document', file);
-      formData.append('userId', userId);
-      
-      const response = await fetch('/api/upload-document', {
-        method: 'POST',
-        body: formData,
-      });
-      
       if (!response.ok) {
-        throw new Error('Upload failed');
+        throw new Error("Failed to send message");
       }
-      
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chat", userId, currentSession] });
-      setIsUploading(false);
-      if (soundEnabled) {
-        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmEaBDeDzPTOgTkKJ2u87Nqc');
-        audio.play().catch(() => {});
-      }
+      // Refetch messages after a successful post to update the chat
+      queryClient.invalidateQueries({ queryKey: ["chatMessages", user?.uid] });
+      toast({
+        title: "AI mentor has responded!",
+        description: "You've received a new message.",
+      });
     },
-    onError: () => {
-      setIsUploading(false);
+    onError: (error) => {
+      console.error("Send message error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
-  const handleSendMessage = () => {
-    if (!message.trim()) return;
-    sendMessageMutation.mutate({ content: message });
+  // Generate intelligent responses like ChatGPT for ANY question
+  function generateCareerAdvice(userMessage: string): string {
+    const lowerMessage = userMessage.toLowerCase();
+    
+    // Math Questions
+    if (lowerMessage.includes('math') || lowerMessage.includes('calculate') || lowerMessage.includes('equation') || lowerMessage.includes('solve') || 
+        lowerMessage.includes('algebra') || lowerMessage.includes('geometry') || lowerMessage.includes('calculus') || lowerMessage.includes('trigonometry')) {
+      return `🔢 **Mathematics Help: "${userMessage}"**
+
+Let me help you with this math problem!
+
+**🧮 Step-by-Step Solution Approach:**
+
+**For Algebra Problems:**
+- Identify the unknown variable
+- Move all terms with variables to one side
+- Combine like terms
+- Solve for the variable
+
+**For Calculus:**
+- Derivatives: Use power rule, product rule, chain rule
+- Integrals: Apply integration techniques
+- Limits: Approach the value systematically
+
+**For Geometry:**
+- Draw a diagram when possible
+- Identify given information
+- Apply relevant formulas and theorems
+
+**Example Solutions:**
+
+**Solve: 2x + 5 = 15**
+\`\`\`
+2x + 5 = 15
+2x = 15 - 5    (subtract 5 from both sides)
+2x = 10
+x = 5          (divide both sides by 2)
+\`\`\`
+
+**Find derivative of f(x) = x² + 3x + 2**
+\`\`\`
+f'(x) = d/dx(x²) + d/dx(3x) + d/dx(2)
+f'(x) = 2x + 3 + 0
+f'(x) = 2x + 3
+\`\`\`
+
+**Area of a circle with radius 5:**
+\`\`\`
+A = πr²
+A = π × 5²
+A = 25π ≈ 78.54 square units
+\`\`\`
+
+**💡 Need help with a specific problem?** 
+Tell me exactly what you're trying to solve and I'll walk you through it step by step!
+
+What specific math problem can I help you solve?`;
+    }
+
+    // Science Questions (Physics, Chemistry, Biology)
+    if (lowerMessage.includes('physics') || lowerMessage.includes('chemistry') || lowerMessage.includes('biology') || 
+        lowerMessage.includes('science') || lowerMessage.includes('molecule') || lowerMessage.includes('atom') || 
+        lowerMessage.includes('cell') || lowerMessage.includes('force') || lowerMessage.includes('energy')) {
+      return `🔬 **Science Explanation: "${userMessage}"**
+
+**🌟 Let me explain this scientific concept!**
+
+**For Physics Topics:**
+- **Motion**: F = ma (Force = mass × acceleration)
+- **Energy**: E = mc² (Einstein's mass-energy equivalence)
+- **Electricity**: V = IR (Ohm's law: Voltage = Current × Resistance)
+- **Waves**: v = fλ (Wave speed = frequency × wavelength)
+
+**For Chemistry Topics:**
+- **Atomic Structure**: Protons, neutrons, electrons
+- **Chemical Bonds**: Ionic, covalent, metallic
+- **Reactions**: Reactants → Products
+- **Periodic Table**: Elements organized by atomic number
+
+**For Biology Topics:**
+- **Cells**: Basic unit of life (prokaryotic vs eukaryotic)
+- **DNA**: Genetic code (A, T, G, C bases)
+- **Evolution**: Natural selection and adaptation
+- **Ecosystems**: Food webs and energy flow
+
+**🧪 Example Explanations:**
+
+**What is photosynthesis?**
+\`\`\`
+6CO₂ + 6H₂O + sunlight → C₆H₁₂O₆ + 6O₂
+Carbon dioxide + Water + Light → Glucose + Oxygen
+
+Process: Plants convert sunlight into chemical energy
+Location: Chloroplasts in plant cells
+Importance: Produces oxygen and food for life on Earth
+\`\`\`
+
+**How do atoms bond?**
+\`\`\`
+Ionic Bonds: Metal gives electrons to non-metal
+Example: Na⁺ + Cl⁻ → NaCl (table salt)
+
+Covalent Bonds: Atoms share electrons
+Example: H₂O (water) - oxygen shares with hydrogen
+
+Metallic Bonds: "Sea" of electrons in metals
+Example: Iron, copper, gold
+\`\`\`
+
+**What's Newton's First Law?**
+\`\`\`
+"An object at rest stays at rest, and an object in motion 
+stays in motion, unless acted upon by an external force"
+
+Example: 
+- Ball on table stays still until you push it
+- Car keeps moving until brakes are applied
+- Explains why we wear seatbelts!
+\`\`\`
+
+**🎯 Study Tips for Science:**
+1. **Understand concepts** before memorizing formulas
+2. **Draw diagrams** to visualize processes
+3. **Do practice problems** regularly
+4. **Connect ideas** between different topics
+5. **Use analogies** to remember complex concepts
+
+What specific science topic would you like me to explain in detail?`;
+    }
+
+    // History Questions
+    if (lowerMessage.includes('history') || lowerMessage.includes('war') || lowerMessage.includes('ancient') || 
+        lowerMessage.includes('civilization') || lowerMessage.includes('revolution') || lowerMessage.includes('empire') ||
+        lowerMessage.includes('president') || lowerMessage.includes('king') || lowerMessage.includes('queen')) {
+      return `📚 **History Explanation: "${userMessage}"**
+
+**🏛️ Let me help you understand this historical topic!**
+
+**Major Historical Periods:**
+- **Ancient Times**: Egypt, Greece, Rome, China (3000 BCE - 500 CE)
+- **Medieval**: Middle Ages, feudalism (500 - 1500 CE)
+- **Renaissance**: Art, science revival (1400 - 1600 CE)
+- **Industrial Age**: Machines, factories (1750 - 1900 CE)
+- **Modern Era**: 20th-21st centuries
+
+**Key Historical Concepts:**
+
+**Causes and Effects:**
+- Events don't happen in isolation
+- Economic, social, political factors interact
+- Short-term vs long-term consequences
+
+**Primary vs Secondary Sources:**
+- Primary: Written during the time period
+- Secondary: Written later by historians
+
+**🌍 Example Historical Analysis:**
+
+**World War II (1939-1945):**
+\`\`\`
+Causes:
+- Treaty of Versailles harsh on Germany
+- Economic depression
+- Rise of fascism (Hitler, Mussolini)
+- Appeasement policy failed
+
+Key Events:
+- Germany invades Poland (1939)
+- Pearl Harbor attack (1941)
+- D-Day invasion (1944)
+- Atomic bombs on Japan (1945)
+
+Consequences:
+- ~70 million deaths
+- United Nations created
+- Cold War begins
+- Decolonization accelerates
+\`\`\`
+
+**American Revolution (1775-1783):**
+\`\`\`
+Causes:
+- "No taxation without representation"
+- Boston Tea Party (1773)
+- Intolerable Acts (1774)
+
+Key Figures:
+- George Washington (military leader)
+- Thomas Jefferson (Declaration author)
+- Benjamin Franklin (diplomat)
+
+Results:
+- Independence from Britain
+- Constitutional government
+- Inspiration for other revolutions
+\`\`\`
+
+**Ancient Rome:**
+\`\`\`
+Republic (509-27 BCE):
+- Senate and consuls
+- Expansion across Mediterranean
+- Julius Caesar's rise and assassination
+
+Empire (27 BCE - 476 CE):
+- Augustus first emperor
+- Pax Romana (Roman Peace)
+- Christianity spreads
+- Fall due to barbarian invasions
+\`\`\`
+
+**🎯 How to Study History:**
+1. **Timeline approach**: Organize events chronologically
+2. **Cause and effect**: Understand why things happened
+3. **Multiple perspectives**: Consider different viewpoints
+4. **Primary sources**: Read original documents
+5. **Make connections**: Link past to present
+
+What specific historical period or event would you like to explore?`;
+    }
+
+    // English/Literature/Writing Questions
+    if (lowerMessage.includes('english') || lowerMessage.includes('grammar') || lowerMessage.includes('write') || 
+        lowerMessage.includes('essay') || lowerMessage.includes('literature') || lowerMessage.includes('poem') ||
+        lowerMessage.includes('novel') || lowerMessage.includes('story')) {
+      return `📝 **English & Writing Help: "${userMessage}"**
+
+**✍️ Let me help you with English and writing!**
+
+**Grammar Essentials:**
+
+**Parts of Speech:**
+- **Nouns**: Person, place, thing (cat, city, happiness)
+- **Verbs**: Action words (run, think, is)
+- **Adjectives**: Describe nouns (big, beautiful, green)
+- **Adverbs**: Describe verbs (quickly, very, well)
+
+**Sentence Structure:**
+\`\`\`
+Simple: Subject + Verb + Object
+"The cat ate the fish."
+
+Compound: Two independent clauses
+"The cat ate the fish, and the dog barked."
+
+Complex: Independent + dependent clause
+"The cat ate the fish because it was hungry."
+\`\`\`
+
+**📖 Essay Writing Structure:**
+
+**5-Paragraph Essay:**
+\`\`\`
+1. Introduction
+   - Hook (interesting opening)
+   - Background information
+   - Thesis statement (main argument)
+
+2-4. Body Paragraphs
+   - Topic sentence
+   - Evidence/examples
+   - Analysis/explanation
+   - Transition to next paragraph
+
+5. Conclusion
+   - Restate thesis
+   - Summarize main points
+   - Closing thought/call to action
+\`\`\`
+
+**Writing Process:**
+1. **Brainstorm**: Generate ideas
+2. **Outline**: Organize thoughts
+3. **Draft**: Write without worrying about perfection
+4. **Revise**: Improve content and structure
+5. **Edit**: Fix grammar and spelling
+
+**📚 Literary Analysis:**
+
+**Elements to Analyze:**
+- **Characters**: Development, motivation, relationships
+- **Plot**: Exposition, rising action, climax, resolution
+- **Setting**: Time, place, atmosphere
+- **Theme**: Central message or meaning
+- **Symbolism**: Objects representing deeper meanings
+
+**Example Analysis:**
+\`\`\`
+"To Kill a Mockingbird" by Harper Lee
+
+Theme: Prejudice and moral courage
+- Scout learns about racism in 1930s Alabama
+- Atticus defends innocent Black man
+- Mockingbird symbolizes innocence destroyed
+
+Character Development:
+- Scout: From naive child to understanding injustice
+- Atticus: Moral compass, stands for what's right
+- Boo Radley: Misunderstood, actually kind
+\`\`\`
+
+**🎯 Writing Tips:**
+- **Show, don't tell**: Use specific details and actions
+- **Vary sentence length**: Mix short and long sentences
+- **Use active voice**: "The dog bit the man" vs "The man was bitten"
+- **Read aloud**: Helps catch awkward phrasing
+- **Get feedback**: Have others read your work
+
+**Common Grammar Mistakes:**
+\`\`\`
+❌ "Me and John went to the store"
+✅ "John and I went to the store"
+
+❌ "Your welcome"
+✅ "You're welcome" (you are welcome)
+
+❌ "I could care less"
+✅ "I couldn't care less"
+
+❌ "Between you and I"
+✅ "Between you and me"
+\`\`\`
+
+What specific writing or literature topic can I help you with?`;
+    }
+
+    // Programming Questions (ANY language)
+    if (lowerMessage.includes('python') || lowerMessage.includes('javascript') || lowerMessage.includes('java') ||
+        lowerMessage.includes('code') || lowerMessage.includes('programming') || lowerMessage.includes('algorithm') ||
+        lowerMessage.includes('function') || lowerMessage.includes('loop') || lowerMessage.includes('variable')) {
+      return `💻 **Programming Help: "${userMessage}"**
+
+**🚀 Let me help you with coding!**
+
+**Programming Fundamentals:**
+
+**Basic Concepts:**
+- **Variables**: Store data (name = "John", age = 25)
+- **Functions**: Reusable code blocks
+- **Loops**: Repeat actions
+- **Conditions**: Make decisions (if/else)
+- **Data Types**: Numbers, strings, booleans, lists
+
+**Python Examples:**
+\`\`\`python
+# Variables and basic operations
+name = "Alice"
+age = 25
+is_student = True
+
+# Function
+def greet(person):
+    return f"Hello, {person}!"
+
+# Loop
+for i in range(5):
+    print(f"Number: {i}")
+
+# Condition
+if age >= 18:
+    print("Adult")
+else:
+    print("Minor")
+
+# List operations
+fruits = ["apple", "banana", "orange"]
+fruits.append("grape")
+print(fruits[0])  # First item
+\`\`\`
+
+**JavaScript Examples:**
+\`\`\`javascript
+// Variables and functions
+const name = "Bob";
+let age = 30;
+
+const greet = (person) => {
+    return \`Hello, \${person}!\`;
+};
+
+// Array operations
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map(num => num * 2);
+
+// DOM manipulation
+document.getElementById("demo").innerHTML = "Hello World!";
+
+// Event handling
+button.addEventListener("click", function() {
+    alert("Button clicked!");
+});
+\`\`\`
+
+**Problem-Solving Approach:**
+1. **Understand**: What exactly is the problem asking?
+2. **Plan**: Break it into smaller steps
+3. **Code**: Write it step by step
+4. **Test**: Try different inputs
+5. **Debug**: Fix any errors
+
+**Common Algorithms:**
+
+**Sorting (Python):**
+\`\`\`python
+# Bubble sort
+def bubble_sort(arr):
+    n = len(arr)
+    for i in range(n):
+        for j in range(0, n-i-1):
+            if arr[j] > arr[j+1]:
+                arr[j], arr[j+1] = arr[j+1], arr[j]
+    return arr
+
+numbers = [64, 34, 25, 12, 22, 11, 90]
+sorted_numbers = bubble_sort(numbers)
+print(sorted_numbers)
+\`\`\`
+
+**Search Algorithm:**
+\`\`\`python
+# Binary search
+def binary_search(arr, target):
+    left, right = 0, len(arr) - 1
+    
+    while left <= right:
+        mid = (left + right) // 2
+        if arr[mid] == target:
+            return mid
+        elif arr[mid] < target:
+            left = mid + 1
+        else:
+            right = mid - 1
+    
+    return -1
+\`\`\`
+
+**🎯 Learning Path:**
+1. **Basics**: Variables, functions, loops
+2. **Data Structures**: Arrays, objects, lists
+3. **Algorithms**: Sorting, searching
+4. **Projects**: Build real applications
+5. **Advanced**: Frameworks, databases
+
+What specific programming concept would you like me to explain?`;
+    }
+
+    // General Knowledge Questions
+    if (lowerMessage.includes('what is') || lowerMessage.includes('how does') || lowerMessage.includes('why') ||
+        lowerMessage.includes('explain') || lowerMessage.includes('define') || lowerMessage.includes('tell me about')) {
+      return `🧠 **General Knowledge: "${userMessage}"**
+
+**🎯 Let me explain this topic for you!**
+
+I can help you understand concepts from many fields:
+
+**🔬 Science & Technology:**
+- How things work (computers, engines, body systems)
+- Scientific phenomena (gravity, electricity, photosynthesis)
+- Latest technology trends (AI, blockchain, quantum computing)
+
+**🌍 Geography & World:**
+- Countries, capitals, landmarks
+- Climate and weather patterns
+- Cultural differences and traditions
+
+**🏛️ History & Politics:**
+- Historical events and their impact
+- Government systems and how they work
+- Famous leaders and their contributions
+
+**💼 Business & Economics:**
+- How markets work
+- Investment basics
+- Economic principles
+
+**🎨 Arts & Culture:**
+- Famous artists and their works
+- Music genres and history
+- Literature and philosophy
+
+**🏥 Health & Medicine:**
+- How the human body works
+- Nutrition and exercise
+- Common medical conditions
+
+**Example Explanations:**
+
+**"What is artificial intelligence?"**
+\`\`\`
+AI is computer systems that can perform tasks that typically 
+require human intelligence:
+
+Types:
+- Machine Learning: Computers learn from data
+- Natural Language Processing: Understanding human language
+- Computer Vision: Analyzing images and videos
+
+Examples:
+- Voice assistants (Siri, Alexa)
+- Recommendation systems (Netflix, YouTube)
+- Self-driving cars
+- Medical diagnosis tools
+
+How it works:
+1. Feed data to algorithms
+2. Algorithms find patterns
+3. Use patterns to make predictions
+4. Improve over time with more data
+\`\`\`
+
+**"How does the internet work?"**
+\`\`\`
+The internet is a global network of connected computers:
+
+Key Components:
+- Servers: Store websites and data
+- Routers: Direct data traffic
+- ISPs: Internet Service Providers connect you
+- Protocols: Rules for data transfer (HTTP, TCP/IP)
+
+Process:
+1. You type a website address
+2. Your computer asks DNS for the server location
+3. Your request travels through routers
+4. Server sends back the website data
+5. Your browser displays the page
+
+Think of it like: A postal system for digital information!
+\`\`\`
+
+**"Why do we dream?"**
+\`\`\`
+Dreams serve several important functions:
+
+Memory Processing:
+- Brain sorts through daily experiences
+- Transfers important info to long-term memory
+- Discards unnecessary information
+
+Emotional Regulation:
+- Processes emotions and stress
+- Helps cope with difficult experiences
+- Provides emotional release
+
+Problem Solving:
+- Brain works on unsolved problems
+- Can lead to creative insights
+- Famous discoveries made in dreams
+
+Brain Maintenance:
+- Clears metabolic waste
+- Repairs neural connections
+- Prepares for next day
+\`\`\`
+
+**🎓 Study Tips for Any Subject:**
+1. **Break it down**: Complex topics into smaller parts
+2. **Use analogies**: Compare to familiar things
+3. **Ask questions**: "How?" "Why?" "What if?"
+4. **Practice**: Apply knowledge in different contexts
+5. **Teach others**: Explaining helps you understand better
+
+What specific topic would you like me to explain in detail?`;
+    }
+
+    // Study Help and Learning Strategies
+    if (lowerMessage.includes('study') || lowerMessage.includes('learn') || lowerMessage.includes('exam') ||
+        lowerMessage.includes('test') || lowerMessage.includes('homework') || lowerMessage.includes('remember')) {
+      return `📚 **Study Help & Learning Strategies: "${userMessage}"**
+
+**🧠 Effective Learning Techniques:**
+
+**1. Active Recall:**
+Instead of just re-reading, test yourself:
+\`\`\`
+Traditional: Read notes over and over
+Better: Close notes, write what you remember
+Best: Teach the concept to someone else
+\`\`\`
+
+**2. Spaced Repetition:**
+Review at increasing intervals:
+\`\`\`
+Day 1: Learn new material
+Day 3: First review
+Day 7: Second review  
+Day 21: Third review
+Day 60: Final review
+\`\`\`
+
+**3. Feynman Technique:**
+\`\`\`
+Step 1: Choose a concept
+Step 2: Explain it simply (like to a 5-year-old)
+Step 3: Find gaps in your explanation
+Step 4: Go back to source material
+Step 5: Simplify your explanation further
+\`\`\`
+
+**📖 Subject-Specific Study Methods:**
+
+**Mathematics:**
+- Practice problems daily (30+ minutes)
+- Understand concepts before memorizing formulas
+- Work through solutions step-by-step
+- Explain your reasoning out loud
+
+**Science:**
+- Draw diagrams and flowcharts
+- Connect new concepts to real-world examples
+- Do hands-on experiments when possible
+- Create concept maps showing relationships
+
+**History/Social Studies:**
+- Create timelines for events
+- Make cause-and-effect charts
+- Use mnemonics for dates and names
+- Read primary sources when available
+
+**Languages:**
+- Practice speaking daily (even to yourself)
+- Watch movies/shows in target language
+- Use flashcards for vocabulary
+- Write short stories or diary entries
+
+**Literature:**
+- Read actively (take notes, ask questions)
+- Analyze character motivations
+- Look for themes and symbols
+- Discuss with others
+
+**⏰ Time Management:**
+
+**Pomodoro Technique:**
+\`\`\`
+25 minutes: Focused study
+5 minutes: Short break
+Repeat 4 times
+30 minutes: Long break
+\`\`\`
+
+**Weekly Schedule Example:**
+\`\`\`
+Monday: Math (1 hour), History (45 min)
+Tuesday: Science (1 hour), English (45 min)
+Wednesday: Review weak areas (1.5 hours)
+Thursday: Math (1 hour), Science (45 min)
+Friday: English (1 hour), History (45 min)
+Weekend: Projects, review, catch up
+\`\`\`
+
+**🎯 Memory Techniques:**
+
+**Mnemonics:**
+- ROY G. BIV (colors of rainbow)
+- "My Very Educated Mother Just Served Us Nachos" (planets)
+- "Please Excuse My Dear Aunt Sally" (order of operations)
+
+**Visualization:**
+- Create mental pictures
+- Use color coding
+- Draw mind maps
+- Make visual stories
+
+**Association:**
+- Link new info to what you already know
+- Create silly or memorable connections
+- Use acronyms and rhymes
+
+**📝 Test-Taking Strategies:**
+
+**Before the Test:**
+- Get good sleep (8+ hours)
+- Eat a healthy breakfast
+- Review key concepts (don't cram)
+- Gather all materials needed
+
+**During the Test:**
+- Read all instructions carefully
+- Start with easy questions
+- Budget your time
+- Show all work in math
+- Check your answers if time allows
+
+**🚀 Motivation Tips:**
+- Set specific, achievable goals
+- Reward yourself for completing tasks
+- Study with friends (but stay focused)
+- Remember your "why" - what you're working toward
+- Take breaks to avoid burnout
+
+What specific study challenge can I help you overcome?`;
+    }
+
+    // For ANY other question - be helpful and educational
+    return `🤔 **Great Question: "${userMessage}"**
+
+**I'm here to help you learn about anything!** Let me provide a helpful answer:
+
+**🎯 Based on your question, here's what I can help you with:**
+
+**If it's about a specific concept:**
+- I'll explain it clearly with examples
+- Provide step-by-step breakdowns
+- Give you practical applications
+- Share relevant background information
+
+**If it's a problem to solve:**
+- I'll walk you through the solution process
+- Show multiple approaches when possible
+- Explain the reasoning behind each step
+- Give you similar practice problems
+
+**If it's for learning/studying:**
+- I'll provide comprehensive explanations
+- Include diagrams or examples
+- Share study tips and memory techniques
+- Connect it to real-world applications
+
+**📚 I can help you with:**
+
+**Academic Subjects:**
+- **Math**: Algebra, geometry, calculus, statistics
+- **Science**: Physics, chemistry, biology, earth science
+- **English**: Grammar, writing, literature analysis
+- **History**: World history, specific events, cause and effect
+- **Foreign Languages**: Grammar, vocabulary, conversation
+
+**Technology & Programming:**
+- **Coding**: Python, JavaScript, Java, C++, HTML/CSS
+- **Computer Science**: Algorithms, data structures
+- **Web Development**: Frontend, backend, databases
+- **AI/ML**: Machine learning, data science
+
+**Practical Skills:**
+- **Study Techniques**: Memory, time management, test prep
+- **Problem Solving**: Critical thinking, logical reasoning
+- **Communication**: Public speaking, writing, presentation
+- **Life Skills**: Financial literacy, career advice
+
+**General Knowledge:**
+- **Current Events**: Technology trends, world affairs
+- **Culture**: Art, music, literature, philosophy
+- **Health**: Nutrition, exercise, mental wellness
+- **Business**: Economics, entrepreneurship, investing
+
+**💡 To give you the best answer, please tell me:**
+- What specific aspect interests you most?
+- What's your current level of knowledge?
+- What are you trying to achieve or understand?
+- Is this for school, work, or personal interest?
+
+**🎓 Example of how I can help:**
+Instead of asking "Tell me about dogs," try:
+- "How do dogs communicate with humans?"
+- "What's the science behind dog training?"
+- "How did dogs evolve from wolves?"
+
+I'm ready to dive deep into any topic and give you detailed, educational explanations!
+
+What would you like to explore?`;
+  }
+
+  const handleSend = () => {
+    if (input.trim() && !sendMessageMutation.isPending) {
+      sendMessageMutation.mutate(input);
+      setInput("");
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      handleSend();
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      uploadDocumentMutation.mutate(file);
-    }
-  };
+  // Use local messages if backend messages are empty
+  const displayMessages = messages.length > 0 ? messages : localMessages;
 
-  const toggleSpeechRecognition = () => {
-    if ('webkitSpeechRecognition' in window) {
-      const recognition = new (window as any).webkitSpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-
-      if (isListening) {
-        recognition.stop();
-        setIsListening(false);
-      } else {
-        setIsListening(true);
-        recognition.start();
-
-        recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setMessage(transcript);
-          setIsListening(false);
-        };
-
-        recognition.onerror = () => {
-          setIsListening(false);
-        };
-
-        recognition.onend = () => {
-          setIsListening(false);
-        };
-      }
-    } else {
-      alert('Speech recognition is not supported in your browser');
-    }
-  };
-
+  // Auto scroll to bottom
   useEffect(() => {
-    if (autoScroll) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, autoScroll]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [displayMessages]);
 
-  const formatTime = (date: Date | string | undefined) => {
-    if (!date) return "Just now";
-    const messageDate = new Date(date);
-    const now = new Date();
-    const diffMinutes = Math.floor((now.getTime() - messageDate.getTime()) / (1000 * 60));
-    
-    if (diffMinutes < 1) return "Just now";
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h ago`;
-    return `${Math.floor(diffMinutes / 1440)}d ago`;
-  };
-
-  const getThemeClasses = () => {
-    switch (chatTheme) {
-      case "dark":
-        return "bg-gray-900 text-white border-gray-700";
-      case "light":
-        return "bg-white text-gray-900 border-neutral-100";
-      case "gradient":
-        return "bg-gradient-to-br from-blue-50 via-white to-purple-50 text-gray-900 border-neutral-100";
-      default:
-        return "bg-white text-gray-900 border-neutral-100";
-    }
-  };
-
-  const currentSessionName = chatSessions.find(s => s.id === currentSession)?.name || "Default Chat";
+  if (!user) {
+    return (
+      <Card className="w-full h-[600px] flex items-center justify-center">
+        <div className="text-center">
+          <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600">Please log in to chat with your AI mentor</p>
+        </div>
+      </Card>
+    );
+  }
 
   return (
-    <div className={`rounded-2xl shadow-sm border overflow-hidden transition-all duration-500 ${
-      isExpanded ? "fixed inset-4 z-50" : "relative"
-    } ${getThemeClasses()}`}>
-      {/* Header */}
-      <div className={`border-b p-6 ${chatTheme === "dark" ? "border-gray-700" : "border-neutral-100"}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className={`w-10 h-10 bg-gradient-to-r from-secondary to-purple-600 rounded-xl flex items-center justify-center ${
-              animationsEnabled ? "hover:scale-110" : ""
-            } transition-all duration-300`}>
-              <Sparkles className="text-white h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold">AI Career Mentor</h3>
-              <p className={`text-sm ${chatTheme === "dark" ? "text-gray-400" : "text-neutral-500"}`}>
-                {currentSessionName} • Online
-              </p>
-            </div>
+    <Card className="w-full h-[600px] flex flex-col bg-gradient-to-br from-blue-50 to-purple-50 border-0 shadow-2xl">
+      <CardHeader className="pb-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
+        <CardTitle className="flex items-center gap-3 text-xl">
+          <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <Bot className="h-5 w-5 text-white" />
           </div>
-          <div className="flex items-center space-x-2">
-            {/* Chat Sessions Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="hover:scale-105 transition-transform">
-                  <MessageSquare className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <div className="p-2">
-                  <Button
-                    onClick={() => createNewChatMutation.mutate()}
-                    className="w-full justify-start mb-2"
-                    size="sm"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Chat
-                  </Button>
-                </div>
-                <DropdownMenuSeparator />
-                {chatSessions.map((session) => (
-                  <div key={session.id} className="flex items-center group">
-                    <DropdownMenuItem
-                      onClick={() => setCurrentSession(session.id)}
-                      className="flex-1 cursor-pointer"
-                    >
-                      <div>
-                        <div className="font-medium">{session.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {session.messageCount} messages
-                        </div>
-                      </div>
-                    </DropdownMenuItem>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 mr-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteChatMutation.mutate(session.id);
-                      }}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          AI Career Mentor
+          <div className="ml-auto">
+            <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+          </div>
+        </CardTitle>
+        <CardDescription className="text-blue-100">
+          💡 Ask me anything about career, coding, business, or skills - I'm here to help!
+        </CardDescription>
+      </CardHeader>
 
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="hover:scale-105 transition-transform"
-            >
-              <Expand className="h-4 w-4" />
-            </Button>
-            
-            {/* Settings Dialog */}
-            <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="hover:scale-105 transition-transform">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md" aria-describedby="settings-description">
-                <DialogHeader>
-                  <DialogTitle>Chat Settings</DialogTitle>
-                  <p id="settings-description" className="text-sm text-muted-foreground">
-                    Customize your AI mentor chat experience with themes, sounds, and animations.
+      <CardContent className="flex-1 flex flex-col min-h-0 p-6 bg-white/50 backdrop-blur-sm">
+        <ScrollArea className="flex-1 pr-4">
+          <div className="space-y-6">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex flex-col items-center space-y-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                  <span className="text-gray-600 font-medium">Loading your conversation...</span>
+                </div>
+              </div>
+            ) : displayMessages.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="bg-gradient-to-br from-blue-100 to-purple-100 rounded-3xl p-8 mb-6">
+                  <Bot className="h-16 w-16 text-blue-600 mx-auto mb-4" />
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                    Welcome to your AI Career Mentor! 🚀
+                  </h3>
+                  <p className="text-gray-700 mb-6 text-lg">
+                    I'm here to provide intelligent answers to all your questions, just like Google Gemini!
                   </p>
-                </DialogHeader>
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="sound">Sound Effects</Label>
-                      <div className="flex items-center space-x-2">
-                        {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-                        <Switch
-                          id="sound"
-                          checked={soundEnabled}
-                          onCheckedChange={setSoundEnabled}
-                        />
-                      </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                  {[
+                    { icon: "💻", title: "Coding & Programming", desc: "Skills, languages, best practices" },
+                    { icon: "💼", title: "Career Development", desc: "Growth strategies, interviews, jobs" },
+                    { icon: "🚀", title: "Business & Startups", desc: "Entrepreneurship, strategy, scaling" },
+                    { icon: "🧠", title: "AI & Technology", desc: "Machine learning, data science, trends" },
+                    { icon: "📚", title: "Learning & Skills", desc: "Study methods, certifications, growth" },
+                    { icon: "🌟", title: "Professional Growth", desc: "Leadership, networking, success" }
+                  ].map((item, index) => (
+                    <div key={index} className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-gray-200 hover:shadow-lg transition-all duration-300 hover:scale-105">
+                      <div className="text-2xl mb-2">{item.icon}</div>
+                      <h4 className="font-semibold text-gray-900 mb-1">{item.title}</h4>
+                      <p className="text-sm text-gray-600">{item.desc}</p>
                     </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="scroll">Auto Scroll</Label>
-                      <Switch
-                        id="scroll"
-                        checked={autoScroll}
-                        onCheckedChange={setAutoScroll}
-                      />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              displayMessages.map((message, index) => (
+                <div
+                  key={message.id || index}
+                  className={`flex items-start gap-4 ${
+                    message.isAI ? "justify-start" : "justify-end"
+                  }`}
+                >
+                  {message.isAI && (
+                    <Avatar className="w-10 h-10 border-2 border-blue-200">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                        <Bot className="h-5 w-5" />
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  
+                  <div
+                    className={`max-w-[85%] p-4 rounded-3xl shadow-lg ${
+                      message.isAI
+                        ? "bg-white border border-gray-200 text-gray-900"
+                        : "bg-gradient-to-r from-blue-600 to-purple-600 text-white ml-auto"
+                    }`}
+                  >
+                    <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                      {message.content}
                     </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="animations">3D Animations</Label>
-                      <Switch
-                        id="animations"
-                        checked={animationsEnabled}
-                        onCheckedChange={setAnimationsEnabled}
-                      />
+                    <div className={`text-xs mt-2 ${message.isAI ? 'text-gray-500' : 'text-blue-100'}`}>
+                      {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                   
-                  <div className="space-y-3">
-                    <Label>Theme</Label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <Button
-                        variant={chatTheme === "light" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setChatTheme("light")}
-                        className="flex items-center space-x-1"
-                      >
-                        <Sun className="h-3 w-3" />
-                        <span>Light</span>
-                      </Button>
-                      <Button
-                        variant={chatTheme === "dark" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setChatTheme("dark")}
-                        className="flex items-center space-x-1"
-                      >
-                        <Moon className="h-3 w-3" />
-                        <span>Dark</span>
-                      </Button>
-                      <Button
-                        variant={chatTheme === "gradient" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setChatTheme("gradient")}
-                        className="flex items-center space-x-1"
-                      >
-                        <Palette className="h-3 w-3" />
-                        <span>Gradient</span>
-                      </Button>
-                    </div>
+                  {!message.isAI && (
+                    <Avatar className="w-10 h-10 border-2 border-blue-200">
+                      <AvatarImage src={user?.photoURL || ""} />
+                      <AvatarFallback className="bg-gradient-to-br from-green-500 to-blue-600 text-white">
+                        <User className="h-5 w-5" />
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                </div>
+              ))
+            )}
+            
+            {sendMessageMutation.isPending && (
+              <div className="flex items-start gap-4">
+                <Avatar className="w-10 h-10 border-2 border-blue-200">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                    <Bot className="h-5 w-5" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="bg-white border border-gray-200 p-4 rounded-3xl shadow-lg">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                    <span className="text-sm text-gray-700 font-medium">AI is analyzing your question...</span>
                   </div>
                 </div>
-              </DialogContent>
-            </Dialog>
+              </div>
+            )}
+            
+            <div ref={messagesEndRef} />
           </div>
-        </div>
-      </div>
-      
-      {/* Messages */}
-      <div className={`${isExpanded ? "h-[calc(100vh-200px)]" : "h-96"} flex flex-col`}>
-        <div className="flex-1 p-6 overflow-y-auto space-y-4">
-          {isLoading ? (
-            <div className="flex justify-center items-center h-full">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <>
-              {messages.map((msg, index) => (
-                <div
-                  key={msg.id}
-                  className={`flex items-start space-x-3 ${msg.isAI ? "" : "justify-end"} ${
-                    animationsEnabled ? "animate-in slide-in-from-bottom-2 duration-300" : ""
-                  }`}
-                  style={{ animationDelay: animationsEnabled ? `${index * 50}ms` : "0ms" }}
-                >
-                  {msg.isAI && (
-                    <div className={`w-8 h-8 bg-gradient-to-r from-secondary to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      animationsEnabled ? "hover:rotate-[360deg] transition-transform duration-700" : ""
-                    }`}>
-                      <Sparkles className="text-white text-xs" />
-                    </div>
-                  )}
-                  <div
-                    className={`rounded-2xl p-4 max-w-xs lg:max-w-md transition-all duration-200 ${
-                      animationsEnabled ? "hover:scale-[1.02] hover:shadow-lg" : ""
-                    } ${
-                      msg.isAI
-                        ? chatTheme === "dark" 
-                          ? "bg-gray-800 rounded-tl-lg" 
-                          : "bg-neutral-50 rounded-tl-lg"
-                        : "bg-primary text-white rounded-tr-lg shadow-md"
-                    }`}
-                  >
-                    <p className={`text-sm ${
-                      msg.isAI 
-                        ? chatTheme === "dark" ? "text-gray-100" : "text-neutral-800" 
-                        : "text-white"
-                    }`}>
-                      {msg.content}
-                    </p>
-                    <span
-                      className={`text-xs mt-2 block ${
-                        msg.isAI 
-                          ? chatTheme === "dark" ? "text-gray-400" : "text-neutral-500"
-                          : "text-blue-200"
-                      }`}
-                    >
-                      {formatTime(msg.createdAt || undefined)}
-                    </span>
-                  </div>
-                  {!msg.isAI && (
-                    <div className={`w-8 h-8 bg-gradient-to-r from-primary to-secondary rounded-full flex items-center justify-center flex-shrink-0 ${
-                      animationsEnabled ? "hover:rotate-[360deg] transition-transform duration-700" : ""
-                    }`}>
-                      <span className="text-white text-xs font-bold">
-                        {userId.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))}
-              
-              {isTyping && (
-                <div className={`flex items-start space-x-3 ${
-                  animationsEnabled ? "animate-in slide-in-from-bottom-2 duration-300" : ""
-                }`}>
-                  <div className={`w-8 h-8 bg-gradient-to-r from-secondary to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    animationsEnabled ? "animate-pulse" : ""
-                  }`}>
-                    <Sparkles className="text-white text-xs" />
-                  </div>
-                  <div className={`${
-                    chatTheme === "dark" ? "bg-gray-800" : "bg-neutral-50"
-                  } rounded-2xl rounded-tl-lg p-4`}>
-                    <div className="flex space-x-1">
-                      <div className={`w-2 h-2 ${
-                        chatTheme === "dark" ? "bg-gray-400" : "bg-neutral-400"
-                      } rounded-full animate-pulse`}></div>
-                      <div className={`w-2 h-2 ${
-                        chatTheme === "dark" ? "bg-gray-400" : "bg-neutral-400"
-                      } rounded-full animate-pulse`} style={{ animationDelay: "0.2s" }}></div>
-                      <div className={`w-2 h-2 ${
-                        chatTheme === "dark" ? "bg-gray-400" : "bg-neutral-400"
-                      } rounded-full animate-pulse`} style={{ animationDelay: "0.4s" }}></div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </>
-          )}
-        </div>
-        
-        {/* Input */}
-        <div className={`border-t p-6 ${chatTheme === "dark" ? "border-gray-700" : "border-neutral-100"}`}>
-          <div className="flex items-center space-x-4">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              accept=".pdf,.doc,.docx,.txt"
-              className="hidden"
+        </ScrollArea>
+
+        <div className="pt-6 border-t border-gray-200">
+          <div className="flex items-center gap-3 bg-white rounded-2xl p-3 shadow-lg border border-gray-200">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask me anything about career, coding, AI, business, or any topic..."
+              className="flex-1 border-0 bg-transparent focus:ring-0 text-gray-900 placeholder-gray-500 text-base"
+              disabled={sendMessageMutation.isPending}
             />
             <Button 
-              variant="ghost" 
-              size="icon" 
-              className="hover:scale-105 transition-transform relative"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-            >
-              {isUploading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-              ) : (
-                <Paperclip className="h-4 w-4" />
-              )}
-            </Button>
-            <div className="flex-1 relative">
-              <Input
-                type="text"
-                placeholder="Ask your AI mentor anything..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className={`pr-12 ${animationsEnabled ? "focus:scale-[1.02] transition-transform" : ""} ${
-                  chatTheme === "dark" ? "bg-gray-800 border-gray-600 text-white" : ""
-                }`}
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`absolute right-2 top-1/2 transform -translate-y-1/2 hover:scale-105 transition-transform ${
-                  isListening ? "text-red-500 animate-pulse" : ""
-                }`}
-                onClick={toggleSpeechRecognition}
-              >
-                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-              </Button>
-            </div>
-            <Button 
-              onClick={handleSendMessage}
-              disabled={!message.trim() || sendMessageMutation.isPending}
-              className={`${animationsEnabled ? "hover:scale-105 active:scale-95" : ""} transition-all duration-150 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90`}
+              onClick={handleSend} 
+              disabled={!input.trim() || sendMessageMutation.isPending}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6 py-2 transition-all duration-300 hover:scale-105 shadow-lg"
             >
               {sendMessageMutation.isPending ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
-                <Send className="h-4 w-4" />
+                <Send className="h-5 w-5" />
               )}
             </Button>
           </div>
-          
-          {/* Upload status */}
-          {isUploading && (
-            <div className="mt-3 flex items-center space-x-2 text-sm text-blue-600">
-              <Upload className="h-4 w-4 animate-bounce" />
-              <span>Analyzing document...</span>
-            </div>
-          )}
-          
-          {/* File upload info */}
-          <div className="mt-2 text-xs text-muted-foreground">
-            💡 Upload PDF, DOC, DOCX, or TXT files for career analysis | Use microphone for speech-to-text
-          </div>
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            💡 Pro tip: Ask specific questions for more detailed and helpful responses!
+          </p>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
