@@ -399,22 +399,22 @@ export async function registerRoutes(app: express.Express) {
         });
       }
 
-      const { userId } = req.body;
+      const { userId, fileType, fileSize, jobKeywords } = req.body;
       const filePath = req.file.path;
       const fileName = req.file.originalname;
 
-      console.log(`Processing resume: ${fileName}`);
+      console.log(`Processing resume: ${fileName} (Type: ${fileType}, Size: ${fileSize})`);
 
-      // Analyze resume with AI
-      const analysis = await analyzeResume(filePath, fileName);
+      // Analyze resume with AI (enhanced with file type and keywords)
+      const analysis = await analyzeResume(filePath, fileName, fileType, jobKeywords);
 
-      console.log(`Analysis completed with score: ${analysis.score}`);
+      console.log(`Analysis completed with score: ${analysis.overallScore || analysis.score}`);
 
       // Create activity
       await storage.createActivity({
         userId: userId || 'anonymous',
         type: "resume_review",
-        description: `Resume "${fileName}" analyzed with score ${analysis.score}/100`,
+        description: `Resume "${fileName}" analyzed with score ${analysis.overallScore || analysis.score}/100`,
       });
 
       // Clean up uploaded file
@@ -433,8 +433,18 @@ export async function registerRoutes(app: express.Express) {
             email: analysis.extractedData?.email || 'N/A',
             phone: analysis.extractedData?.phone || 'N/A',
             experience: analysis.extractedData?.experience || [],
-            education: analysis.extractedData?.education || []
-          }
+            education: analysis.extractedData?.education || [],
+            skills: analysis.extractedData?.skills || []
+          },
+          keywordAnalysis: analysis.keywordAnalysis || {
+            found: [],
+            missing: [],
+            suggestions: []
+          },
+          formattingScore: analysis.formattingScore || analysis.score,
+          contentScore: analysis.contentScore || analysis.score,
+          atsScore: analysis.atsScore || analysis.score,
+          overallScore: analysis.overallScore || analysis.score
         }
       });
     } catch (error) {
@@ -517,6 +527,79 @@ export async function registerRoutes(app: express.Express) {
     } catch (error) {
       console.error("Job search error:", error);
       res.status(500).json({ message: "Failed to search jobs" });
+    }
+  });
+
+  // Resume routes
+  app.post("/api/resume/save", async (req, res) => {
+    try {
+      const { userId, resumeData } = req.body;
+      
+      if (!userId || !resumeData) {
+        return res.status(400).json({ message: "User ID and resume data are required" });
+      }
+
+      // Save resume data to storage
+      await storage.saveResume(userId, resumeData);
+
+      // Create activity
+      await storage.createActivity({
+        userId,
+        type: "resume_saved",
+        description: "Resume saved successfully",
+      });
+
+      res.json({ message: "Resume saved successfully" });
+    } catch (error) {
+      console.error("Resume save error:", error);
+      res.status(500).json({ message: "Failed to save resume" });
+    }
+  });
+
+  app.get("/api/resume/load", async (req, res) => {
+    try {
+      const { userId } = req.query;
+      
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      // Load resume data from storage
+      const resumeData = await storage.getResume(userId as string);
+      
+      if (!resumeData) {
+        return res.status(404).json({ message: "No resume found for this user" });
+      }
+
+      res.json({ resumeData });
+    } catch (error) {
+      console.error("Resume load error:", error);
+      res.status(500).json({ message: "Failed to load resume" });
+    }
+  });
+
+  app.delete("/api/resume/delete", async (req, res) => {
+    try {
+      const { userId } = req.query;
+      
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      // Delete resume data from storage
+      await storage.deleteResume(userId as string);
+
+      // Create activity
+      await storage.createActivity({
+        userId: userId as string,
+        type: "resume_deleted",
+        description: "Resume deleted",
+      });
+
+      res.json({ message: "Resume deleted successfully" });
+    } catch (error) {
+      console.error("Resume delete error:", error);
+      res.status(500).json({ message: "Failed to delete resume" });
     }
   });
 

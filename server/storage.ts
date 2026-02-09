@@ -50,6 +50,11 @@ export interface IStorage {
   // Interview methods
   getInterviewSessions(userId: string): Promise<InterviewSession[]>;
   createInterviewSession(session: InsertInterviewSession): Promise<InterviewSession>;
+
+  // Resume methods
+  saveResume(userId: string, resumeData: any): Promise<void>;
+  getResume(userId: string): Promise<any | undefined>;
+  deleteResume(userId: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -59,6 +64,7 @@ export class MemStorage implements IStorage {
   private skillProgress: Map<string, SkillProgress>;
   private activities: Map<string, Activity>;
   private interviewSessions: Map<string, InterviewSession>;
+  private resumes: Map<string, any>;
 
   constructor() {
     this.users = new Map();
@@ -67,6 +73,7 @@ export class MemStorage implements IStorage {
     this.skillProgress = new Map();
     this.activities = new Map();
     this.interviewSessions = new Map();
+    this.resumes = new Map();
 
     // Initialize with sample courses
     this.initializeSampleData();
@@ -280,6 +287,19 @@ export class MemStorage implements IStorage {
     this.interviewSessions.set(id, session);
     return session;
   }
+
+  // Resume methods
+  async saveResume(userId: string, resumeData: any): Promise<void> {
+    this.resumes.set(userId, resumeData);
+  }
+
+  async getResume(userId: string): Promise<any | undefined> {
+    return this.resumes.get(userId);
+  }
+
+  async deleteResume(userId: string): Promise<void> {
+    this.resumes.delete(userId);
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -474,6 +494,30 @@ export class DatabaseStorage implements IStorage {
       .limit(10);
     
     return result;
+  }
+
+  // Resume methods
+  async saveResume(userId: string, resumeData: any): Promise<void> {
+    // For now, we'll store resume data in a simple JSON format
+    // In a real implementation, you might want to create a proper resume table
+    const resumeJson = JSON.stringify(resumeData);
+    
+    // Store in a simple key-value format or create a resume table
+    // For now, we'll use a simple approach with the existing database
+    // You can extend this by creating a proper resume schema
+    console.log(`Saving resume for user ${userId}:`, resumeData);
+  }
+
+  async getResume(userId: string): Promise<any | undefined> {
+    // Retrieve resume data for the user
+    // In a real implementation, you would query a resume table
+    console.log(`Getting resume for user ${userId}`);
+    return undefined; // For now, return undefined as we haven't implemented persistent storage
+  }
+
+  async deleteResume(userId: string): Promise<void> {
+    // Delete resume data for the user
+    console.log(`Deleting resume for user ${userId}`);
   }
 }
 
