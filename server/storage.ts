@@ -26,8 +26,10 @@ export interface IStorage {
   // User methods
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<void>;
 
   // Course methods
   getCourses(): Promise<Course[]>;
@@ -142,6 +144,14 @@ export class MemStorage implements IStorage {
     const updatedUser = { ...user, ...updates };
     this.users.set(id, updatedUser);
     return updatedUser;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    this.users.delete(id);
   }
 
   async getCourses(): Promise<Course[]> {
@@ -338,6 +348,14 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
+
   async getCourses(): Promise<Course[]> {
     return await db.select().from(courses);
   }
@@ -523,6 +541,21 @@ export class DatabaseStorage implements IStorage {
 
 // Create comprehensive course database with real course data
 async function initializeSampleData() {
+  // Ensure dev user exists
+  const [existingUser] = await db.select().from(users).where(eq(users.id, "dev-user"));
+  if (!existingUser) {
+     console.log("Creating dev user...");
+     await db.insert(users).values({
+         id: "dev-user",
+         email: "dev@example.com",
+         name: "Developer",
+         role: "student",
+         skills: [],
+         credits: 100,
+     });
+     console.log("Dev user created.");
+  }
+
   const existingCourses = await db.select().from(courses);
 
   if (existingCourses.length === 0) {

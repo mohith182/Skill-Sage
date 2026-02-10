@@ -119,52 +119,54 @@ export default function Interview({ user }: InterviewProps) {
   const selectedTypeInfo = interviewTypes.find(t => t.type === selectedType);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-blue-50">
+    <div className="min-h-screen bg-background">
       <Navigation user={user} />
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="section-container py-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-neutral-800 mb-4">Mock Interview Simulator</h1>
-          <p className="text-neutral-600 text-lg">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground mb-1">Mock Interview Simulator</h1>
+          <p className="text-muted-foreground text-sm">
             Practice with AI-powered interview scenarios and get instant feedback
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Interview Area */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-5">
             
             {/* Interview Type Selection */}
             {!sessionActive && !feedback && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Target className="h-5 w-5" />
-                    <span>Choose Interview Type</span>
-                  </CardTitle>
+              <Card className="card-professional">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="icon-wrapper icon-wrapper-sm icon-bg-primary">
+                      <Target className="icon-sm icon-primary" />
+                    </div>
+                    <CardTitle className="text-base font-semibold">Choose Interview Type</CardTitle>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <CardContent className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {interviewTypes.map((type) => {
                       const Icon = type.icon;
                       return (
                         <div
                           key={type.type}
                           onClick={() => setSelectedType(type.type)}
-                          className={`cursor-pointer p-6 rounded-xl border-2 transition-all ${
+                          className={`cursor-pointer p-4 rounded-lg border-2 transition-all ${
                             selectedType === type.type
                               ? "border-primary bg-primary/5"
-                              : "border-neutral-200 hover:border-neutral-300"
+                              : "border-border hover:border-primary/30"
                           }`}
                         >
-                          <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${type.color} flex items-center justify-center mb-4`}>
-                            <Icon className="h-6 w-6 text-white" />
+                          <div className="icon-wrapper icon-wrapper-sm icon-bg-primary mb-3">
+                            <Icon className="icon-sm icon-primary" />
                           </div>
-                          <h3 className="font-semibold text-neutral-800 mb-2">{type.title}</h3>
-                          <p className="text-sm text-neutral-600 mb-4">{type.description}</p>
-                          <div className="space-y-1">
-                            {type.examples.map((example, index) => (
-                              <Badge key={index} variant="outline" className="text-xs mr-1 mb-1">
+                          <h3 className="font-semibold text-sm text-foreground mb-1">{type.title}</h3>
+                          <p className="text-xs text-muted-foreground mb-3">{type.description}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {type.examples.slice(0, 2).map((example, index) => (
+                              <Badge key={index} variant="outline" className="text-xs h-5">
                                 {example}
                               </Badge>
                             ))}
@@ -178,7 +180,7 @@ export default function Interview({ user }: InterviewProps) {
                     <Button 
                       onClick={startInterview}
                       disabled={generateQuestionMutation.isPending}
-                      className="bg-primary hover:bg-primary/90 px-8 py-6 text-lg"
+                      className="h-10"
                     >
                       {generateQuestionMutation.isPending ? (
                         <>
@@ -187,7 +189,7 @@ export default function Interview({ user }: InterviewProps) {
                         </>
                       ) : (
                         <>
-                          <Play className="h-5 w-5 mr-2" />
+                          <Play className="icon-sm mr-2" />
                           Start {selectedTypeInfo?.title}
                         </>
                       )}
@@ -199,53 +201,55 @@ export default function Interview({ user }: InterviewProps) {
 
             {/* Active Interview */}
             {sessionActive && (
-              <Card>
-                <CardHeader>
+              <Card className="card-professional">
+                <CardHeader className="pb-4">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center space-x-2">
-                      <Mic className="h-5 w-5" />
-                      <span>{selectedTypeInfo?.title} in Progress</span>
-                    </CardTitle>
-                    <Badge className={`bg-gradient-to-r ${selectedTypeInfo?.color} text-white`}>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Mic className="h-4 w-4 text-primary" />
+                      </div>
+                      <CardTitle className="text-base font-semibold">{selectedTypeInfo?.title} in Progress</CardTitle>
+                    </div>
+                    <span className="status-badge status-info text-xs">
                       {selectedType.replace('_', ' ').toUpperCase()}
-                    </Badge>
+                    </span>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="bg-neutral-50 p-6 rounded-lg">
-                    <h3 className="font-semibold text-neutral-800 mb-3">Interview Question:</h3>
-                    <p className="text-neutral-700 leading-relaxed">{currentQuestion}</p>
+                <CardContent className="space-y-5">
+                  <div className="bg-muted/50 p-4 rounded-lg border border-border">
+                    <h3 className="font-medium text-sm text-foreground mb-2">Interview Question:</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{currentQuestion}</p>
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Your Response:
                     </label>
                     <Textarea
                       value={userResponse}
                       onChange={(e) => setUserResponse(e.target.value)}
                       placeholder="Type your detailed response here..."
-                      className="min-h-[200px]"
+                      className="min-h-[160px] text-sm"
                     />
                   </div>
                   
-                  <div className="flex space-x-4">
+                  <div className="flex gap-3">
                     <Button
                       onClick={submitResponse}
                       disabled={!userResponse.trim() || submitResponseMutation.isPending}
-                      className="bg-primary hover:bg-primary/90"
+                      className="h-9"
                     >
                       {submitResponseMutation.isPending ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white mr-2"></div>
                           Analyzing...
                         </>
                       ) : (
                         "Submit Response"
                       )}
                     </Button>
-                    <Button variant="outline" onClick={resetInterview}>
-                      <RotateCcw className="h-4 w-4 mr-2" />
+                    <Button variant="outline" onClick={resetInterview} className="h-9">
+                      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
                       Reset
                     </Button>
                   </div>
@@ -255,61 +259,63 @@ export default function Interview({ user }: InterviewProps) {
 
             {/* Feedback Display */}
             {feedback && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Trophy className="h-5 w-5" />
-                    <span>Interview Feedback</span>
-                  </CardTitle>
+              <Card className="card-professional">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Trophy className="h-4 w-4 text-primary" />
+                    </div>
+                    <CardTitle className="text-base font-semibold">Interview Feedback</CardTitle>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-5">
                   <div className="text-center">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-green-400 to-green-600 text-white text-2xl font-bold mb-4">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary text-primary-foreground text-xl font-bold mb-3">
                       {feedback.score}
                     </div>
-                    <p className="text-lg font-semibold text-neutral-800">
+                    <p className="text-sm font-semibold text-foreground">
                       Score: {feedback.score}/100
                     </p>
                   </div>
                   
-                  <div className="bg-neutral-50 p-6 rounded-lg">
-                    <h3 className="font-semibold text-neutral-800 mb-3">Detailed Feedback:</h3>
-                    <p className="text-neutral-700 leading-relaxed">{feedback.feedback}</p>
+                  <div className="bg-muted/50 p-4 rounded-lg border border-border">
+                    <h3 className="font-medium text-sm text-foreground mb-2">Detailed Feedback:</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{feedback.feedback}</p>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="font-semibold text-green-800 mb-3">Strengths:</h3>
-                      <ul className="space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-lg border border-emerald-200 bg-emerald-50/50">
+                      <h3 className="font-medium text-sm text-emerald-700 mb-2">Strengths:</h3>
+                      <ul className="space-y-1.5">
                         {feedback.strengths?.map((strength: string, index: number) => (
-                          <li key={index} className="flex items-start space-x-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                            <span className="text-neutral-700">{strength}</span>
+                          <li key={index} className="flex items-start gap-2">
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                            <span className="text-xs text-muted-foreground">{strength}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
                     
-                    <div>
-                      <h3 className="font-semibold text-red-800 mb-3">Areas for Improvement:</h3>
-                      <ul className="space-y-2">
+                    <div className="p-4 rounded-lg border border-amber-200 bg-amber-50/50">
+                      <h3 className="font-medium text-sm text-amber-700 mb-2">Areas for Improvement:</h3>
+                      <ul className="space-y-1.5">
                         {feedback.improvements?.map((improvement: string, index: number) => (
-                          <li key={index} className="flex items-start space-x-2">
-                            <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
-                            <span className="text-neutral-700">{improvement}</span>
+                          <li key={index} className="flex items-start gap-2">
+                            <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                            <span className="text-xs text-muted-foreground">{improvement}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
                   </div>
                   
-                  <div className="flex space-x-4">
-                    <Button onClick={startInterview} className="bg-primary hover:bg-primary/90">
-                      <Play className="h-4 w-4 mr-2" />
+                  <div className="flex gap-3">
+                    <Button onClick={startInterview} className="h-9">
+                      <Play className="h-3.5 w-3.5 mr-1.5" />
                       Try Another Question
                     </Button>
-                    <Button variant="outline" onClick={resetInterview}>
-                      <RotateCcw className="h-4 w-4 mr-2" />
+                    <Button variant="outline" onClick={resetInterview} className="h-9">
+                      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
                       Choose Different Type
                     </Button>
                   </div>
@@ -319,67 +325,69 @@ export default function Interview({ user }: InterviewProps) {
           </div>
 
           {/* Sidebar - Interview History */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Clock className="h-5 w-5" />
-                  <span>Recent Sessions</span>
-                </CardTitle>
+          <div className="space-y-5">
+            <Card className="card-professional">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Clock className="h-4 w-4 text-primary" />
+                  </div>
+                  <CardTitle className="text-base font-semibold">Recent Sessions</CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 {sessions.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {sessions.slice(0, 5).map((session) => (
-                      <div key={session.id} className="p-4 border border-neutral-200 rounded-lg">
+                      <div key={session.id} className="p-3 border border-border rounded-lg hover:border-primary/30 transition-colors">
                         <div className="flex items-center justify-between mb-2">
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs h-5">
                             {session.type.replace('_', ' ')}
                           </Badge>
-                          <span className="text-2xl font-bold text-primary">
+                          <span className="text-lg font-bold text-primary">
                             {session.score}
                           </span>
                         </div>
-                        <p className="text-sm text-neutral-600 line-clamp-2 mb-2">
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-1">
                           {session.question}
                         </p>
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-muted-foreground/70">
                           {new Date(session.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <Mic className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-                    <p className="text-neutral-500">No interview sessions yet</p>
-                    <p className="text-sm text-neutral-400">Start your first mock interview!</p>
+                  <div className="text-center py-6">
+                    <Mic className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">No interview sessions yet</p>
+                    <p className="text-xs text-muted-foreground/70">Start your first mock interview!</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
             {/* Tips Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Interview Tips</CardTitle>
+            <Card className="card-professional">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-semibold">Interview Tips</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 text-sm text-neutral-600">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+                <div className="space-y-2.5 text-xs text-muted-foreground">
+                  <div className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0"></div>
                     <span>Take your time to think before answering</span>
                   </div>
-                  <div className="flex items-start space-x-2">
-                    <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0"></div>
                     <span>Use the STAR method for behavioral questions</span>
                   </div>
-                  <div className="flex items-start space-x-2">
-                    <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0"></div>
                     <span>Explain your thought process clearly</span>
                   </div>
-                  <div className="flex items-start space-x-2">
-                    <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0"></div>
                     <span>Practice regularly to improve your skills</span>
                   </div>
                 </div>

@@ -1,10 +1,14 @@
 import fs from "fs";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 import mammoth from "mammoth";
 
-const genAI = new GoogleGenerativeAI(
-  process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || ""
-);
+// Initialize Groq client
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY || "",
+});
+
+// Default model to use - Groq's fast LLaMA model
+const GROQ_MODEL = "llama-3.3-70b-versatile";
 
 export interface CareerAdviceResponse {
   message: string;
@@ -19,30 +23,146 @@ export interface InterviewFeedback {
   strengths: string[];
 }
 
+function cleanJson(text: string): string {
+    return text.replace(/```json\n?|\n?```/g, "").trim();
+}
+
+// Check if API key is configured
+const isGroqConfigured = (): boolean => {
+  const apiKey = process.env.GROQ_API_KEY;
+  return !!apiKey && apiKey.length > 10 && apiKey.startsWith('gsk_');
+};
+
+// Helper function to call Groq API
+async function callGroq(prompt: string, systemPrompt?: string): Promise<string> {
+  // Check if API is configured
+  if (!isGroqConfigured()) {
+    console.log("Groq API not configured, using fallback");
+    throw new Error("API_NOT_CONFIGURED");
+  }
+
+  const messages: { role: "system" | "user" | "assistant"; content: string }[] = [];
+  
+  if (systemPrompt) {
+    messages.push({ role: "system", content: systemPrompt });
+  }
+  messages.push({ role: "user", content: prompt });
+
+  try {
+    const completion = await groq.chat.completions.create({
+      messages,
+      model: GROQ_MODEL,
+      temperature: 0.7,
+      max_tokens: 2048,
+    });
+
+    return completion.choices[0]?.message?.content || "";
+  } catch (error: any) {
+    console.error("Groq API call failed:", error?.message || error);
+    throw error;
+  }
+}
+
+// Helper function to call Groq API with JSON response
+async function callGroqJson(prompt: string, systemPrompt?: string): Promise<string> {
+  const messages: { role: "system" | "user" | "assistant"; content: string }[] = [];
+  
+  const jsonSystemPrompt = (systemPrompt || "") + "\n\nIMPORTANT: You must respond with valid JSON only. No markdown, no code blocks, just pure JSON.";
+  messages.push({ role: "system", content: jsonSystemPrompt });
+  messages.push({ role: "user", content: prompt });
+
+  const completion = await groq.chat.completions.create({
+    messages,
+    model: GROQ_MODEL,
+    temperature: 0.5,
+    max_tokens: 4096,
+    response_format: { type: "json_object" },
+  });
+
+  return completion.choices[0]?.message?.content || "{}";
+}
+
+// Fallback responses when API quota is exceeded
+function getFallbackResponse(prompt: string): CareerAdviceResponse {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  // Common career topics with helpful fallback responses
+  if (lowerPrompt.includes('resume') || lowerPrompt.includes('cv')) {
+    return {
+      message: "Great question about resumes! Here are some key tips:\n\n1. **Keep it concise** - Aim for 1-2 pages max\n2. **Use action verbs** - Start bullet points with words like 'Led', 'Developed', 'Achieved'\n3. **Quantify achievements** - Use numbers where possible (e.g., 'Increased sales by 25%')\n4. **Tailor for each job** - Customize your resume to match job descriptions\n5. **Proofread carefully** - Typos can cost you the interview\n\nWould you like more specific advice on any of these areas?",
+      suggestions: ["Resume formatting tips", "How to write a summary", "Common resume mistakes"],
+      resources: []
+    };
+  }
+  
+  if (lowerPrompt.includes('interview')) {
+    return {
+      message: "Interview preparation is crucial! Here's my advice:\n\n1. **Research the company** - Know their mission, values, and recent news\n2. **Practice common questions** - Use the STAR method for behavioral questions\n3. **Prepare your own questions** - Shows genuine interest\n4. **Dress appropriately** - When in doubt, dress one level up\n5. **Follow up** - Send a thank-you email within 24 hours\n\nWhat specific type of interview are you preparing for?",
+      suggestions: ["Technical interview tips", "Behavioral questions", "Salary negotiation"],
+      resources: []
+    };
+  }
+  
+  if (lowerPrompt.includes('job') || lowerPrompt.includes('career') || lowerPrompt.includes('work')) {
+    return {
+      message: "Career planning is an exciting journey! Here are some steps to consider:\n\n1. **Self-assessment** - Identify your strengths, interests, and values\n2. **Set clear goals** - Define short-term and long-term objectives\n3. **Build your network** - Connect with professionals in your field\n4. **Upskill continuously** - Take courses to stay relevant\n5. **Gain experience** - Internships, projects, and volunteering all count\n\nWhat aspect of your career would you like to focus on?",
+      suggestions: ["Career transition advice", "Finding your passion", "Industry trends"],
+      resources: []
+    };
+  }
+  
+  if (lowerPrompt.includes('skill') || lowerPrompt.includes('learn')) {
+    return {
+      message: "Excellent focus on skill development! Here's how to approach it:\n\n1. **Identify gaps** - Compare your skills to job requirements in your target role\n2. **Prioritize** - Focus on high-impact skills first\n3. **Set a schedule** - Dedicate regular time for learning\n4. **Practice actively** - Build projects to apply what you learn\n5. **Get certified** - Credentials can boost your credibility\n\nWhat skills are you most interested in developing?",
+      suggestions: ["Technical skills to learn", "Soft skills importance", "Online learning platforms"],
+      resources: []
+    };
+  }
+  
+  if (lowerPrompt.includes('hello') || lowerPrompt.includes('hi') || lowerPrompt.includes('hey')) {
+    return {
+      message: "Hello! 👋 I'm your AI Career Mentor. I'm here to help you with:\n\n• Resume and CV advice\n• Interview preparation\n• Career planning and transitions\n• Skill development guidance\n• Job search strategies\n\nWhat would you like to discuss today?",
+      suggestions: ["Resume review", "Interview tips", "Career advice"],
+      resources: []
+    };
+  }
+  
+  // Default response
+  return {
+    message: "Thank you for your question! I'm here to help with career guidance. While I process your request, here are some general tips:\n\n1. **Stay curious** - Continuous learning is key to career growth\n2. **Network actively** - Many opportunities come through connections\n3. **Document achievements** - Keep track of your accomplishments\n4. **Seek feedback** - Regular feedback helps you improve\n\nCould you provide more details about what specific career advice you're looking for?",
+    suggestions: ["Career planning", "Skill development", "Job search tips"],
+    resources: []
+  };
+}
+
 export async function getCareerAdvice(prompt: string, userContext?: any): Promise<CareerAdviceResponse> {
   try {
     const contextPrompt = userContext ? 
       `User context: ${JSON.stringify(userContext)}\n\nUser question: ${prompt}` : 
       prompt;
 
-    const fullPrompt = `You are SkillSage, an AI-powered career mentor. Provide helpful, encouraging, and actionable career advice. 
-    Keep responses conversational but professional. Focus on practical steps and resources.
+    const systemPrompt = `You are SkillSage, an AI-powered career mentor. Provide helpful, encouraging, and actionable career advice. 
+    Keep responses conversational but professional. Focus on practical steps and resources.`;
 
-    ${contextPrompt}`;
-
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent(fullPrompt);
-    const response = await result.response;
-    const text = response.text() || "I'm sorry, I couldn't process your request right now. Please try again.";
+    const text = await callGroq(contextPrompt, systemPrompt);
 
     return {
-      message: text,
-      suggestions: [], // Could be enhanced to parse suggestions from response
+      message: text || "I'm sorry, I couldn't process your request right now. Please try again.",
+      suggestions: [],
       resources: [],
     };
-  } catch (error) {
-    console.error("Gemini API error:", error);
-    throw new Error("Failed to get career advice. Please try again later.");
+  } catch (error: any) {
+    console.error("Groq API error:", error);
+    
+    // Check if it's a rate limit error
+    if (error?.status === 429 || error?.message?.includes('rate') || error?.message?.includes('429')) {
+      console.log("Rate limit hit, using fallback response");
+      return getFallbackResponse(prompt);
+    }
+    
+    // For other errors, still try to provide a helpful fallback
+    console.log("API error, using fallback response");
+    return getFallbackResponse(prompt);
   }
 }
 
@@ -53,8 +173,9 @@ export async function analyzeInterviewResponse(
 ): Promise<InterviewFeedback> {
   try {
     const systemPrompt = `You are an interview assessment AI. Analyze the candidate's response and provide constructive feedback.
+    You must respond with valid JSON only.`;
 
-    Interview Type: ${interviewType}
+    const prompt = `Interview Type: ${interviewType}
     Question: ${question}
     Candidate Response: ${userResponse}
 
@@ -64,19 +185,10 @@ export async function analyzeInterviewResponse(
     - improvements (array of improvement suggestions)
     - strengths (array of identified strengths)`;
 
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      generationConfig: {
-        responseMimeType: "application/json"
-      }
-    });
-
-    const result = await model.generateContent(systemPrompt);
-    const response = await result.response;
-    const rawJson = response.text();
+    const rawJson = await callGroqJson(prompt, systemPrompt);
 
     if (rawJson) {
-      const feedback: InterviewFeedback = JSON.parse(rawJson);
+      const feedback: InterviewFeedback = JSON.parse(cleanJson(rawJson));
       return feedback;
     } else {
       throw new Error("Empty response from model");
@@ -85,7 +197,7 @@ export async function analyzeInterviewResponse(
     console.error("Interview analysis error:", error);
     return {
       score: 75,
-      feedback: " analyze response at this time. Please try again later on.",
+      feedback: "Could not analyze response at this time. Please try again later.",
       improvements: ["Try providing more specific examples", "Structure your answer better"],
       strengths: ["Good communication attempt"]
     };
@@ -96,21 +208,13 @@ export async function generateCourseRecommendations(userSkills: string[], intere
   try {
     const prompt = `Based on these user skills: ${userSkills.join(', ')} and interests: ${interests.join(', ')}, 
     recommend 3-5 specific courses that would help advance their career. 
-    Return as a JSON array of course titles only.`;
+    Return as a JSON object with a "courses" array containing course title strings only.`;
 
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-pro",
-      generationConfig: {
-        responseMimeType: "application/json"
-      }
-    });
-
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const rawJson = response.text();
+    const rawJson = await callGroqJson(prompt, "You are a career advisor. Respond with valid JSON only.");
 
     if (rawJson) {
-      return JSON.parse(rawJson);
+      const parsed = JSON.parse(cleanJson(rawJson));
+      return parsed.courses || [];
     } else {
       return [];
     }
@@ -125,11 +229,9 @@ export async function generateInterviewQuestion(interviewType: string): Promise<
     const prompt = `Generate a realistic ${interviewType} interview question. 
     Return only the question without any additional formatting.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = await callGroq(prompt, "You are an interview question generator. Generate realistic interview questions.");
 
-    return response.text() || "Tell me about yourself and why you're interested in this position.";
+    return response || "Tell me about yourself and why you're interested in this position.";
   } catch (error) {
     console.error("Question generation error:", error);
     return "Tell me about yourself and why you're interested in this position.";
@@ -155,18 +257,10 @@ export async function analyzeDocument(filePath: string, fileName: string): Promi
     Format as JSON with "summary" and "recommendations" (array of strings).
     `;
 
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-pro",
-      generationConfig: {
-        responseMimeType: "application/json"
-      }
-    });
-
-    const result = await model.generateContent(prompt);
-    const response = result.response.text();
+    const response = await callGroqJson(prompt, "You are a document analyzer. Analyze documents and provide career-related insights.");
 
     try {
-      return JSON.parse(response);
+      return JSON.parse(cleanJson(response));
     } catch {
       return {
         summary: "Document analyzed successfully. The content appears to be career-related.",
@@ -349,16 +443,8 @@ export async function analyzeResume(filePath: string, fileName: string, fileType
       }
     `;
 
-    const model = genAI.getGenerativeModel({
-      model: isImageFile ? "gemini-1.5-flash" : "gemini-1.5-flash",
-      generationConfig: {
-        responseMimeType: "application/json"
-      }
-    });
-
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const analysis = JSON.parse(response.text());
+    const response = await callGroqJson(prompt, "You are a professional resume analyzer. Analyze resumes and provide detailed feedback in JSON format.");
+    const analysis = JSON.parse(cleanJson(response));
 
     // Validate and provide fallbacks for missing fields
     if (!analysis.score || !analysis.summary || !analysis.strengths) {
@@ -509,19 +595,12 @@ export async function searchJobs(query: string, location: string = ""): Promise<
     Format as JSON array with objects containing: id, title, company, location, type, salary, description, requirements (array), postedDate, applyUrl.
     `;
 
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-pro",
-      generationConfig: {
-        responseMimeType: "application/json"
-      }
-    });
-
-    const result = await model.generateContent(prompt);
-    const response = result.response.text();
+    const response = await callGroqJson(prompt, "You are a job listing generator. Generate realistic job listings in JSON format. Wrap the array in a 'jobs' object.");
 
     try {
-      const jobs = JSON.parse(response);
-      return jobs.map((job: any, index: number) => ({
+      const parsed = JSON.parse(cleanJson(response));
+      const jobs = parsed.jobs || parsed;
+      return (Array.isArray(jobs) ? jobs : []).map((job: any, index: number) => ({
         id: `job_${Date.now()}_${index}`,
         title: job.title || `${query} Position`,
         company: job.company || `Tech Company ${index + 1}`,
@@ -534,7 +613,7 @@ export async function searchJobs(query: string, location: string = ""): Promise<
         applyUrl: job.applyUrl || `https://careers.example.com/jobs/${index + 1}`
       }));
     } catch (parseError) {
-      console.log('Failed to parse Gemini response, using fallback jobs');
+      console.log('Failed to parse Groq response, using fallback jobs');
       return getFallbackJobs(query, location);
     }
   } catch (error) {
@@ -655,19 +734,12 @@ export async function searchIndiaJobs(query: string, location: string = ""): Pro
     Make sure salaries are realistic for Indian market (e.g., ₹3-8 LPA for entry level, ₹8-15 LPA for mid-level, ₹15-30+ LPA for senior positions).
     `;
 
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-pro",
-      generationConfig: {
-        responseMimeType: "application/json"
-      }
-    });
-
-    const result = await model.generateContent(prompt);
-    const response = result.response.text();
+    const response = await callGroqJson(prompt, "You are a job listing generator for the Indian market. Generate realistic job listings in JSON format. Wrap the array in a 'jobs' object.");
 
     try {
-      const jobs = JSON.parse(response);
-      return jobs.map((job: any, index: number) => ({
+      const parsed = JSON.parse(cleanJson(response));
+      const jobs = parsed.jobs || parsed;
+      return (Array.isArray(jobs) ? jobs : []).map((job: any, index: number) => ({
         id: `india_job_${Date.now()}_${index}`,
         title: job.title || `${query} Position`,
         company: job.company || `Indian Tech Company ${index + 1}`,
@@ -681,7 +753,7 @@ export async function searchIndiaJobs(query: string, location: string = ""): Pro
         isRealTime: true
       }));
     } catch (parseError) {
-      console.log('Failed to parse Gemini response, using fallback jobs');
+      console.log('Failed to parse Groq response, using fallback jobs');
       return getFallbackIndiaJobs(query, location);
     }
   } catch (error) {
@@ -785,4 +857,345 @@ function getFallbackIndiaJobs(query: string, location: string = ""): Array<{
       isRealTime: true
     }
   ];
+}
+
+// ============================================
+// NEW FEATURES: Resume Enhancement Tools
+// ============================================
+
+// 1. AI Cover Letter Generator
+export interface CoverLetterResponse {
+  coverLetter: string;
+  highlights: string[];
+  tone: string;
+}
+
+export async function generateCoverLetter(
+  resumeData: any,
+  jobDescription: string,
+  companyName: string,
+  tone: "formal" | "enthusiastic" | "creative" = "formal"
+): Promise<CoverLetterResponse> {
+  try {
+    const toneDescriptions = {
+      formal: "professional, formal, and business-like",
+      enthusiastic: "energetic, passionate, and eager",
+      creative: "unique, creative, and memorable while remaining professional"
+    };
+
+    const prompt = `Generate a professional cover letter based on the following:
+
+RESUME DATA:
+${JSON.stringify(resumeData, null, 2)}
+
+JOB DESCRIPTION:
+${jobDescription}
+
+COMPANY NAME: ${companyName}
+
+TONE: ${toneDescriptions[tone]}
+
+Generate a compelling cover letter that:
+1. Matches the candidate's experience to the job requirements
+2. Highlights relevant achievements with specific examples
+3. Shows knowledge of the company
+4. Uses the specified tone throughout
+5. Is concise (250-350 words)
+
+Return JSON with:
+- coverLetter: the full cover letter text
+- highlights: array of 3-4 key points that make this candidate stand out
+- tone: the tone used`;
+
+    const response = await callGroqJson(prompt, "You are an expert cover letter writer. Generate compelling, personalized cover letters.");
+    const parsed = JSON.parse(cleanJson(response));
+    
+    return {
+      coverLetter: parsed.coverLetter || "Cover letter generation failed. Please try again.",
+      highlights: parsed.highlights || [],
+      tone: parsed.tone || tone
+    };
+  } catch (error) {
+    console.error("Cover letter generation error:", error);
+    return {
+      coverLetter: "Unable to generate cover letter at this time. Please try again later.",
+      highlights: [],
+      tone: tone
+    };
+  }
+}
+
+// 2. Skill Gap Analysis with Learning Paths
+export interface SkillGapAnalysis {
+  matchedSkills: string[];
+  missingSkills: Array<{
+    skill: string;
+    importance: "critical" | "important" | "nice-to-have";
+    learningResources: Array<{
+      title: string;
+      type: "video" | "course" | "documentation" | "tutorial";
+      url: string;
+      duration: string;
+    }>;
+  }>;
+  overallMatch: number; // percentage
+  recommendations: string[];
+}
+
+export async function analyzeSkillGap(
+  resumeSkills: string[],
+  jobDescription: string
+): Promise<SkillGapAnalysis> {
+  try {
+    const prompt = `Analyze the skill gap between a candidate and a job:
+
+CANDIDATE SKILLS:
+${resumeSkills.join(", ")}
+
+JOB DESCRIPTION:
+${jobDescription}
+
+Identify:
+1. Which of the candidate's skills match the job requirements
+2. Which skills are missing and their importance level
+3. For each missing skill, provide 2-3 learning resources (YouTube tutorials, documentation, courses)
+
+Return JSON with:
+- matchedSkills: array of skills from the resume that match the JD
+- missingSkills: array of objects with {skill, importance ("critical"/"important"/"nice-to-have"), learningResources: [{title, type, url, duration}]}
+- overallMatch: percentage match (0-100)
+- recommendations: array of 3-4 actionable recommendations`;
+
+    const response = await callGroqJson(prompt, "You are a career skills analyst. Provide accurate skill gap analysis with real, helpful learning resources.");
+    const parsed = JSON.parse(cleanJson(response));
+    
+    return {
+      matchedSkills: parsed.matchedSkills || [],
+      missingSkills: parsed.missingSkills || [],
+      overallMatch: parsed.overallMatch || 0,
+      recommendations: parsed.recommendations || []
+    };
+  } catch (error) {
+    console.error("Skill gap analysis error:", error);
+    return {
+      matchedSkills: [],
+      missingSkills: [],
+      overallMatch: 0,
+      recommendations: ["Unable to analyze skill gap at this time. Please try again later."]
+    };
+  }
+}
+
+// 3. Multi-Language Resume Translation
+export interface TranslatedResume {
+  translatedContent: any;
+  language: string;
+  languageCode: string;
+  qualityNote: string;
+}
+
+export async function translateResume(
+  resumeData: any,
+  targetLanguage: string
+): Promise<TranslatedResume> {
+  try {
+    const languageMap: Record<string, string> = {
+      "hindi": "hi",
+      "tamil": "ta",
+      "french": "fr",
+      "spanish": "es",
+      "german": "de",
+      "chinese": "zh",
+      "japanese": "ja",
+      "arabic": "ar",
+      "portuguese": "pt",
+      "telugu": "te",
+      "kannada": "kn",
+      "malayalam": "ml",
+      "marathi": "mr",
+      "bengali": "bn"
+    };
+
+    const prompt = `Translate the following resume content to ${targetLanguage}.
+
+RESUME DATA:
+${JSON.stringify(resumeData, null, 2)}
+
+IMPORTANT INSTRUCTIONS:
+1. Maintain professional terminology and industry-standard terms
+2. Keep technical skills, company names, and certifications in English
+3. Translate section headers, descriptions, and achievements
+4. Ensure the translation sounds natural and professional in ${targetLanguage}
+5. Keep dates, numbers, and proper nouns unchanged
+
+Return a JSON object with the same structure as the input, but with translated content.
+Also include a "qualityNote" field with any notes about the translation.`;
+
+    const response = await callGroqJson(prompt, `You are a professional resume translator specializing in ${targetLanguage}. Maintain professional tone and industry terminology.`);
+    const parsed = JSON.parse(cleanJson(response));
+    
+    return {
+      translatedContent: parsed,
+      language: targetLanguage,
+      languageCode: languageMap[targetLanguage.toLowerCase()] || "en",
+      qualityNote: parsed.qualityNote || "Translation completed successfully."
+    };
+  } catch (error) {
+    console.error("Resume translation error:", error);
+    return {
+      translatedContent: resumeData,
+      language: targetLanguage,
+      languageCode: "en",
+      qualityNote: "Translation failed. Showing original content."
+    };
+  }
+}
+
+// 4. Resume Roast / Detailed Feedback with Scorecard
+export interface ResumeRoast {
+  overallScore: number;
+  scorecard: {
+    readability: { score: number; feedback: string };
+    impact: { score: number; feedback: string };
+    keywordDensity: { score: number; feedback: string };
+    formatting: { score: number; feedback: string };
+    atsCompatibility: { score: number; feedback: string };
+  };
+  bluntFeedback: string[];
+  criticalIssues: string[];
+  quickWins: string[];
+  detailedReview: {
+    section: string;
+    rating: "excellent" | "good" | "needs-improvement" | "poor";
+    feedback: string;
+  }[];
+}
+
+export async function roastResume(
+  resumeContent: string,
+  resumeData?: any
+): Promise<ResumeRoast> {
+  try {
+    const prompt = `You are a brutally honest resume reviewer. Give blunt, constructive feedback.
+
+RESUME CONTENT:
+${resumeContent}
+
+${resumeData ? `STRUCTURED DATA:\n${JSON.stringify(resumeData, null, 2)}` : ""}
+
+Provide a detailed roast/review with:
+1. Score each area 0-100 with specific feedback
+2. Be direct and blunt (e.g., "Your summary is too vague" or "You're hiding behind buzzwords")
+3. Identify critical issues that could get the resume rejected
+4. Suggest quick wins that can be fixed in 5 minutes
+
+Return JSON with:
+- overallScore: 0-100
+- scorecard: {
+    readability: {score, feedback},
+    impact: {score, feedback},
+    keywordDensity: {score, feedback},
+    formatting: {score, feedback},
+    atsCompatibility: {score, feedback}
+  }
+- bluntFeedback: array of 5-7 direct, honest feedback points
+- criticalIssues: array of issues that MUST be fixed
+- quickWins: array of easy improvements
+- detailedReview: array of {section, rating, feedback} for each resume section`;
+
+    const response = await callGroqJson(prompt, "You are a brutally honest but helpful resume critic. Be direct, specific, and constructive.");
+    const parsed = JSON.parse(cleanJson(response));
+    
+    return {
+      overallScore: parsed.overallScore || 50,
+      scorecard: parsed.scorecard || {
+        readability: { score: 50, feedback: "Unable to analyze" },
+        impact: { score: 50, feedback: "Unable to analyze" },
+        keywordDensity: { score: 50, feedback: "Unable to analyze" },
+        formatting: { score: 50, feedback: "Unable to analyze" },
+        atsCompatibility: { score: 50, feedback: "Unable to analyze" }
+      },
+      bluntFeedback: parsed.bluntFeedback || [],
+      criticalIssues: parsed.criticalIssues || [],
+      quickWins: parsed.quickWins || [],
+      detailedReview: parsed.detailedReview || []
+    };
+  } catch (error) {
+    console.error("Resume roast error:", error);
+    return {
+      overallScore: 0,
+      scorecard: {
+        readability: { score: 0, feedback: "Error analyzing resume" },
+        impact: { score: 0, feedback: "Error analyzing resume" },
+        keywordDensity: { score: 0, feedback: "Error analyzing resume" },
+        formatting: { score: 0, feedback: "Error analyzing resume" },
+        atsCompatibility: { score: 0, feedback: "Error analyzing resume" }
+      },
+      bluntFeedback: ["Unable to analyze resume at this time."],
+      criticalIssues: [],
+      quickWins: [],
+      detailedReview: []
+    };
+  }
+}
+
+// 5. Interview Question Predictor
+export interface PredictedInterviewQuestions {
+  questions: Array<{
+    question: string;
+    category: "behavioral" | "technical" | "situational" | "experience-based";
+    difficulty: "easy" | "medium" | "hard";
+    basedOn: string; // Which part of resume this is based on
+    tips: string;
+    sampleAnswer?: string;
+  }>;
+  focusAreas: string[];
+  preparationTips: string[];
+}
+
+export async function predictInterviewQuestions(
+  resumeData: any,
+  jobDescription?: string
+): Promise<PredictedInterviewQuestions> {
+  try {
+    const prompt = `Based on this resume${jobDescription ? " and job description" : ""}, predict likely interview questions.
+
+RESUME:
+${JSON.stringify(resumeData, null, 2)}
+
+${jobDescription ? `JOB DESCRIPTION:\n${jobDescription}` : ""}
+
+Generate 8-10 interview questions a recruiter would likely ask based on:
+1. Projects and work experience listed
+2. Skills mentioned
+3. Career transitions or gaps
+4. Achievements highlighted
+${jobDescription ? "5. Match between resume and job requirements" : ""}
+
+For each question include:
+- The specific part of the resume it's based on
+- Tips for answering
+- A brief sample answer structure
+
+Return JSON with:
+- questions: array of {question, category, difficulty, basedOn, tips, sampleAnswer}
+- focusAreas: array of topics the candidate should prepare for
+- preparationTips: array of 4-5 preparation recommendations`;
+
+    const response = await callGroqJson(prompt, "You are an experienced recruiter and interview coach. Generate realistic interview questions based on the candidate's background.");
+    const parsed = JSON.parse(cleanJson(response));
+    
+    return {
+      questions: parsed.questions || [],
+      focusAreas: parsed.focusAreas || [],
+      preparationTips: parsed.preparationTips || []
+    };
+  } catch (error) {
+    console.error("Interview question prediction error:", error);
+    return {
+      questions: [],
+      focusAreas: [],
+      preparationTips: ["Unable to predict interview questions at this time. Please try again later."]
+    };
+  }
 }

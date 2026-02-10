@@ -2,26 +2,27 @@
 import { ResumeDashboard } from "@/components/ResumeDashboard";
 import { useUser } from "@/lib/firebase";
 import { Navigation } from "@/components/Navigation";
+import { Loader2 } from "lucide-react";
 
 export default function Resume() {
   const user = useUser();
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">Loading your resume workspace...</p>
+          <Loader2 className="icon-lg spinner icon-primary mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">Loading your resume workspace...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="section-container py-6">
         <ResumeDashboard userId={user.uid} />
       </div>
     </div>

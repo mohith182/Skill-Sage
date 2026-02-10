@@ -8,17 +8,91 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// User roles enum
+export const UserRole = {
+  ADMIN: "admin",
+  USER: "user",
+  STUDENT: "student",
+  MENTOR: "mentor",
+} as const;
+
+export type UserRoleType = (typeof UserRole)[keyof typeof UserRole];
+
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(), // Firebase UID
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   photoURL: text("photo_url"),
-  role: text("role").notNull().default("student"), // student, mentor, admin
+  role: text("role").notNull().default("user"), // admin, user, student, mentor
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  lastLoginAt: integer("last_login_at", { mode: "timestamp" }),
   skills: blob("skills", { mode: "json" }).default([]),
   credits: integer("credits").default(0),
   internshipHours: integer("internship_hours").default(0),
   certificates: integer("certificates").default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).default(
+    sql`(strftime('%s', 'now'))`
+  ),
+});
+
+// System Settings for Admin
+export const systemSettings = sqliteTable("system_settings", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull(),
+  description: text("description"),
+  category: text("category").notNull().default("general"), // general, notifications, security
+  updatedAt: integer("updated_at", { mode: "timestamp" }).default(
+    sql`(strftime('%s', 'now'))`
+  ),
+  updatedBy: text("updated_by").references(() => users.id),
+});
+
+// System Alerts
+export const alerts = sqliteTable("alerts", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").references(() => users.id),
+  type: text("type").notNull(), // info, warning, error, success
+  severity: text("severity").notNull().default("low"), // low, medium, high, critical
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  isRead: integer("is_read", { mode: "boolean" }).default(false),
+  isResolved: integer("is_resolved", { mode: "boolean" }).default(false),
+  resolvedBy: text("resolved_by").references(() => users.id),
+  resolvedAt: integer("resolved_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(
+    sql`(strftime('%s', 'now'))`
+  ),
+});
+
+// System Logs for Admin
+export const systemLogs = sqliteTable("system_logs", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").references(() => users.id),
+  action: text("action").notNull(), // login, logout, create, update, delete
+  resource: text("resource").notNull(), // user, course, resume, etc.
+  resourceId: text("resource_id"),
+  details: text("details"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(
+    sql`(strftime('%s', 'now'))`
+  ),
+});
+
+// Content/Resources for Admin management
+export const resources = sqliteTable("resources", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  title: text("title").notNull(),
+  description: text("description"),
+  type: text("type").notNull(), // course, article, video, template
+  url: text("url"),
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(
+    sql`(strftime('%s', 'now'))`
+  ),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).default(
     sql`(strftime('%s', 'now'))`
   ),
 });
@@ -146,6 +220,28 @@ export const insertInterviewSessionSchema = createInsertSchema(
   createdAt: true,
 });
 
+// Admin schemas
+export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export const insertAlertSchema = createInsertSchema(alerts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSystemLogSchema = createInsertSchema(systemLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertResourceSchema = createInsertSchema(resources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -161,3 +257,13 @@ export type InterviewSession = typeof interviewSessions.$inferSelect;
 export type InsertInterviewSession = z.infer<
   typeof insertInterviewSessionSchema
 >;
+
+// Admin types
+export type SystemSetting = typeof systemSettings.$inferSelect;
+export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
+export type Alert = typeof alerts.$inferSelect;
+export type InsertAlert = z.infer<typeof insertAlertSchema>;
+export type SystemLog = typeof systemLogs.$inferSelect;
+export type InsertSystemLog = z.infer<typeof insertSystemLogSchema>;
+export type Resource = typeof resources.$inferSelect;
+export type InsertResource = z.infer<typeof insertResourceSchema>;

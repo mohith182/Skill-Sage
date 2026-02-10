@@ -183,147 +183,142 @@ export default function Courses({ user }: CoursesProps) {
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case "Beginner": return "bg-green-100 text-green-800";
-      case "Intermediate": return "bg-yellow-100 text-yellow-800";
-      case "Advanced": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "Beginner": return "status-badge status-success";
+      case "Intermediate": return "status-badge status-warning";
+      case "Advanced": return "status-badge status-info";
+      default: return "status-badge";
     }
   };
 
   const handleCourseEnroll = (courseTitle: string, price: string) => {
-    const isPaid = price !== "Free" && price !== "$0.00";
-    const message = isPaid 
-      ? `This course "${courseTitle}" costs ${price}. You'll be redirected to Coursera to enroll.`
-      : `This course "${courseTitle}" is free! You'll be redirected to Coursera to enroll.`;
-    
-    if (confirm(message)) {
-      const searchQuery = encodeURIComponent(courseTitle);
-      window.open(`https://www.coursera.org/search?query=${searchQuery}`, '_blank');
-    }
+    const searchQuery = encodeURIComponent(courseTitle);
+    window.open(`https://www.coursera.org/search?query=${searchQuery}`, '_blank');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-blue-50">
+    <div className="min-h-screen bg-background">
       <Navigation user={user} />
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="section-container py-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-neutral-800 mb-4">Course Catalog</h1>
-          <p className="text-neutral-600 text-lg">
-            Discover thousands of courses to advance your career and skills
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground mb-1">Course Catalog</h1>
+          <p className="text-muted-foreground text-sm">
+            Discover courses to advance your career and skills
           </p>
         </div>
 
         {/* Filters */}
-        <div className="mb-8 space-y-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
-              <Input
-                type="text"
-                placeholder="Search courses..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+        <Card className="card-professional mb-6">
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 icon-sm text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search courses..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9"
+                />
+              </div>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-full md:w-44 h-9">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map(category => (
+                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
+                <SelectTrigger className="w-full md:w-36 h-9">
+                  <SelectValue placeholder="All Levels" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Levels</SelectItem>
+                  {difficulties.map(difficulty => (
+                    <SelectItem key={difficulty} value={difficulty}>{difficulty}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map(category => (
-                  <SelectItem key={category} value={category}>{category}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="All Levels" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Levels</SelectItem>
-                {difficulties.map(difficulty => (
-                  <SelectItem key={difficulty} value={difficulty}>{difficulty}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Results count */}
-        <div className="mb-6">
-          <p className="text-neutral-600">
+        <div className="mb-4">
+          <p className="text-sm text-muted-foreground">
             Showing {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''}
           </p>
         </div>
 
         {/* Course Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredCourses.map((course) => (
-            <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-200">
+            <Card key={course.id} className="card-professional overflow-hidden group">
               <div className="relative">
                 <img
                   src={course.imageUrl}
                   alt={course.title}
-                  className="w-full h-48 object-cover"
+                  className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 {course.isRecommended && (
-                  <Badge className="absolute top-3 left-3 bg-secondary text-white">
-                    Recommended
-                  </Badge>
+                  <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-primary/90 text-white text-xs font-medium rounded-md">
+                    AI Pick
+                  </div>
                 )}
-                <div className="absolute top-3 right-3">
-                  <Badge className={getDifficultyColor(course.difficulty)}>
+                <div className="absolute top-2 right-2">
+                  <span className={getDifficultyColor(course.difficulty)}>
                     {course.difficulty}
-                  </Badge>
+                  </span>
                 </div>
               </div>
               
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg leading-6 line-clamp-2">
+              <CardHeader className="pb-2 pt-4">
+                <CardTitle className="text-sm font-semibold leading-5 line-clamp-2 group-hover:text-primary transition-colors">
                   {course.title}
                 </CardTitle>
-                <p className="text-sm text-neutral-600 line-clamp-2">
+                <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
                   {course.description}
                 </p>
               </CardHeader>
               
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between text-sm text-neutral-600">
-                  <div className="flex items-center space-x-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="font-medium">{course.rating}</span>
+              <CardContent className="space-y-3 pt-0">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Star className="icon-xs fill-amber-400 text-amber-400" />
+                    <span className="font-medium text-foreground">{course.rating}</span>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <Clock className="h-4 w-4" />
+                  <div className="flex items-center gap-1">
+                    <Clock className="icon-xs" />
                     <span>{course.duration}</span>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <Users className="h-4 w-4" />
+                  <div className="flex items-center gap-1">
+                    <Users className="icon-xs" />
                     <span>{course.students.toLocaleString()}</span>
                   </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <p className="text-sm text-neutral-600">
-                    by <span className="font-medium">{course.instructor}</span>
-                  </p>
-                  <Badge variant="outline" className="text-xs">
-                    {course.category}
-                  </Badge>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      by <span className="font-medium text-foreground">{course.instructor}</span>
+                    </p>
+                    <Badge variant="outline" className="text-xs mt-1 h-5">
+                      {course.category}
+                    </Badge>
+                  </div>
+                  <span className="text-lg font-bold text-primary">{course.price}</span>
                 </div>
                 
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-2xl font-bold text-primary">{course.price}</span>
-                  <Button 
-                    className="bg-primary hover:bg-primary/90"
-                    onClick={() => handleCourseEnroll(course.title, course.price)}
-                  >
-                    Find on Coursera
-                  </Button>
-                </div>
+                <Button 
+                  className="w-full h-8 text-xs font-medium"
+                  onClick={() => handleCourseEnroll(course.title, course.price)}
+                >
+                  Find on Coursera
+                </Button>
               </CardContent>
             </Card>
           ))}
@@ -331,11 +326,11 @@ export default function Courses({ user }: CoursesProps) {
 
         {filteredCourses.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-neutral-400 mb-4">
-              <Search className="h-16 w-16 mx-auto" />
+            <div className="text-muted-foreground mb-4">
+              <Search className="h-12 w-12 mx-auto" />
             </div>
-            <h3 className="text-xl font-semibold text-neutral-600 mb-2">No courses found</h3>
-            <p className="text-neutral-500">Try adjusting your search criteria</p>
+            <h3 className="text-lg font-semibold text-foreground mb-1">No courses found</h3>
+            <p className="text-sm text-muted-foreground">Try adjusting your search criteria</p>
           </div>
         )}
       </div>
